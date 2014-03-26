@@ -1,0 +1,10 @@
+.ifndef NES_HEADER_INC
+.define NES_HEADER_INC
+;-------------------------------------------------------------------------------
+
+.global   PRGROM_SZ16K, PRGRAM_SZ8K, CHRROM_SZ8K
+.globalzp FLAGS6, FLAGS7, FLAGS9, FLAGS10
+
+;-------------------------------------------------------------------------------
+.endif ;NES_HEADER_INC
+

@@ -4,8 +4,13 @@
 #
 
 SYMBOLS {
-    PRGROM_SZ:    type = import, addrsize = long;
-    CHRROM_SZ:    type = import, addrsize = long;
+    PRGROM_SZ16K: type = import, addrsize = abs;
+    CHRROM_SZ8K:  type = import, addrsize = abs;
+    FLAGS9:       type = weak, value = 0, addrsize = zp;
+    FLAGS10:      type = weak, value = 0, addrsize = zp;
+    PRGROM_SZ:    type = export, value = $4000 * PRGROM_SZ16K;
+    CHRROM_SZ:    type = export, value = $2000 * CHRROM_SZ8K;
+    PRGRAM_SZ:    type = export, value = $2000 * PRGRAM_SZ8K;
 }
 
 # attributes:
@@ -59,33 +64,85 @@ MEMORY {
         size  = CHRROM_SZ;
 }
 
-# attributes:
-#  load (mandatory) = MEM
-#  type   = rw ro zp bss
-#  define = yes
-#  file   = "file" %O (default)
-#  run    = MEM
-#  align  = value \
-#  start  = ADDR   > define none or one, never more than one
-#  offset = value /
-
 SEGMENTS {
     # RAM segments
     REG:        load = ZEROPAGE, type = zp;
-    ZP:         load = ZEROPAGE, type = zp, optional = yes;
+    ZEROPAGE:   load = ZEROPAGE, type = zp;
     BSS:        load = NESRAM, type = bss, define = yes;
     EXRAM:      load = EXRAM, type = bss, optional = yes;
 
     # Must stay here!
     NESHEADER:  load = RES_DUMMYNESHEADER,   type = ro;
 
-    # The various PRG banks, care should be taken to use the same number of 
-    # banks that the iNES header tells
-    BANK00:     load = PRGROM, type = ro, define = yes, align_load = $2000,
-                run = ROMSB0;
+    # The various PRG banks, care should be taken to use no more than the number
+    # of banks that the emulator 
+    PRGBK00:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK01:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK02:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK03:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK04:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK05:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK06:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK07:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK08:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK09:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK10:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK11:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK12:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK13:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK14:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK15:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK16:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK17:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK18:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK19:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK20:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK21:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK22:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK23:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK24:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK25:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK26:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK27:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK28:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK29:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK30:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK31:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK32:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK33:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK34:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK35:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK36:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK37:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK38:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK39:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK40:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK41:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK42:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK43:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK44:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK45:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK46:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK47:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK48:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK49:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK50:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK51:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK52:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK53:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK54:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK55:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK56:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK57:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK58:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK59:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK60:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK61:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK62:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
+    PRGBK63:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
 
     # Must stay here!
-    # Fixed last bank
+    # Fixed last PRG-ROM bank
     RODATA:     load = ROMFB0, run = ROMFB0, type = ro, align = $2000;
     DATA:       load = ROMFB0, run = NESRAM, type = rw, define = yes;
     CODE:       load = ROMFB0, run = ROMFB0, type = ro;

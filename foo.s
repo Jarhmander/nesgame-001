@@ -1,15 +1,21 @@
 .include "configure.inc"
 .include "core.inc"
 
-; Must be placed in a config file, with the NES header config
-.export CHRROM_SZ = $2000 * CHRROM_SZ8K;
-.export PRGROM_SZ = $4000 * PRGROM_SZ16K;
+
+nesconfig horz, 69, off
+nessize 1
 
     .code
-
 reset:
     bit $2002
     bpl reset
+
+    ; FME-7: select bank 0 at $8000-9FFF
+    ldy #9
+    lda #0
+    sty $8000
+    sta $A000
+
 :   bit $2002
     bpl :-
 
@@ -34,17 +40,22 @@ nmi:
     lda #0
     sta $2006
 
-    inc n0
+    jsr some_routine
     rti
 irq:
     lda i0
     sta r8
     rti
 
-
-    .segment "BANK00"
+    .segment "PRGBK00"
 some_routine:
-    lda r0
-    sta $4000
+    lda n1
+    clc
+    adc #1
+    cmp #30
+    bne :+
+    lda #0
+    inc n0
+:   sta n1
     rts
 

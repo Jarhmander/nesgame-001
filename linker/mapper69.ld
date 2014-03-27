@@ -4,22 +4,23 @@
 #
 
 SYMBOLS {
-    PRGROM_SZ16K: type = import, addrsize = abs;
-    CHRROM_SZ8K:  type = import, addrsize = abs;
-    FLAGS9:       type = weak, value = 0, addrsize = zp;
-    FLAGS10:      type = weak, value = 0, addrsize = zp;
-    PRGROM_SZ:    type = export, value = $4000 * PRGROM_SZ16K;
-    CHRROM_SZ:    type = export, value = $2000 * CHRROM_SZ8K;
-    PRGRAM_SZ:    type = export, value = $2000 * PRGRAM_SZ8K;
+    # Import those symbols from nes-header
+    __PRGROM_SZ16K__ : type = import, addrsize = abs;
+    __CHRROM_SZ8K__ :  type = import, addrsize = abs;
+
+    # Default values for those flags
+    __FLAGS9__ :       type = weak, value = 0, addrsize = zp;
+    __FLAGS10__ :      type = weak, value = 0, addrsize = zp;
+
+    # Export mapper value for configure.inc
+    __CFG_MAPPER__ :   type = export, value = 69, addrsize = zp;
+
+    # Symbols used by the linker script; could be useful outside
+    __PRGROM_SZ__ :    type = export, value = $4000 * __PRGROM_SZ16K__;
+    __CHRROM_SZ__ :    type = export, value = $2000 * __CHRROM_SZ8K__;
+    __PRGRAM_SZ__ :    type = export, value = $2000 * __PRGRAM_SZ8K__;
 }
 
-# attributes:
-#  start = ADDR
-#  size  = LEN
-#  define= yes
-#  type = ro rw
-#  fill = yes
-#  fillval= value
 MEMORY {
     # Dummy region: reserved for NES header
     RES_DUMMYNESHEADER:
@@ -27,9 +28,9 @@ MEMORY {
 
     PRGROM:
     # Another somewhat dummy region. Use multiples of 16K ($4000)
-        start = $10000000,
+        start = $0,
         fill = yes,
-        size  = PRGROM_SZ - $2000;
+        size  = __PRGROM_SZ__ - $2000;
 
     ZEROPAGE:
         start  = 0,    size = 256,  type = rw;
@@ -61,7 +62,11 @@ MEMORY {
     CHRROM:
     # Another somewhat dummy region. Use multiples of 8K ($2000)
         start = $10000000,
-        size  = CHRROM_SZ;
+        size  = __CHRROM_SZ__,
+        fill  = yes;
+    CHRROM_LOAD:
+        start = 0,
+        size  = $400;
 }
 
 SEGMENTS {
@@ -74,8 +79,7 @@ SEGMENTS {
     # Must stay here!
     NESHEADER:  load = RES_DUMMYNESHEADER,   type = ro;
 
-    # The various PRG banks, care should be taken to use no more than the number
-    # of banks that the emulator 
+    # The various PRG banks, one may change the run address to another ROMSBx 
     PRGBK00:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
     PRGBK01:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
     PRGBK02:     load = PRGROM, type = ro, define = yes, align_load = $2000, optional = yes, run = ROMSB0;
@@ -149,7 +153,7 @@ SEGMENTS {
     VECTORS:    load = ROMFB0, run = ROMFB0, type = ro, offset = $1FFA;
 
     # CHR-ROM segments
-
+    #CHRBK000:   load = CHRROM, type = ro, define = yes, align_load = $400, optional = yes, run = CHRROM_LOAD;
 }
 
 # features:

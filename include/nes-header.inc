@@ -3,8 +3,8 @@
 ;-------------------------------------------------------------------------------
 
 
-.global   PRGROM_SZ16K : abs, PRGRAM_SZ8K : abs, CHRROM_SZ8K : abs
-.globalzp FLAGS6, FLAGS7, FLAGS9, FLAGS10
+.global   __PRGROM_SZ16K__:abs, __PRGRAM_SZ8K__:abs, __CHRROM_SZ8K__:abs
+.globalzp __FLAGS6__, __FLAGS7__, __FLAGS9__, __FLAGS10__
 
 ;-------------------------------------------------------------------------------
 .endif ;NES_HEADER_INC

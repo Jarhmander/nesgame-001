@@ -3,17 +3,17 @@
 .segment "NESHEADER"
     ; Based on NESDev wiki (http://wiki.nesdev.com/w/index.php/INES)
 
-                        ; offset |  Description
-                        ;-------------------------------------------------------
-    .byte "NES", $1A    ; 0-3    | "Magic word"
-    .byte <PRGROM_SZ16K ; 4      | PRG-ROM size in 16K increments
-    .byte <CHRROM_SZ8K  ; 5      | CHR-ROM size in 8K increments (0 = CHR-RAM)
-    .byte FLAGS6        ; 6      | Mapper, trainer, SRAM, mirroring (see below)
-    .byte FLAGS7        ; 7      | Mapper, version, system (see below)
-    .byte <PRGRAM_SZ8K  ; 8      | PRG-RAM size in 8K increments
-    .byte FLAGS9        ; 9      | TV system (see below)
-    .byte FLAGS10       ; 10     | Rarely supported flags (see below)
-    .byte 0,0,0,0,0     ; 11-15  | Reserved (0 for compatibility)
+                            ; offset |  Description
+                            ;------------------------------------------------------
+    .byte "NES", $1A        ; 0-3    | "Magic word"
+    .byte <__PRGROM_SZ16K__ ; 4      | PRG-ROM size in 16K increments
+    .byte <__CHRROM_SZ8K__  ; 5      | CHR-ROM size in 8K increments (0 = CHR-RAM)
+    .byte __FLAGS6__        ; 6      | Mapper, trainer, SRAM, mirroring (see below)
+    .byte __FLAGS7__        ; 7      | Mapper, version, system (see below)
+    .byte <__PRGRAM_SZ8K__  ; 8      | PRG-RAM size in 8K increments
+    .byte __FLAGS9__        ; 9      | TV system (see below)
+    .byte __FLAGS10__       ; 10     | Rarely supported flags (see below)
+    .byte 0,0,0,0,0         ; 11-15  | Reserved (0 for compatibility)
 
 ; FLAGS6:
 ;

@@ -41,8 +41,11 @@
     .endif
 
     .if isok
-        .exportzp FLAGS6 = tflag6
-        .exportzp FLAGS7 = tflag7
+        .exportzp __FLAGS6__ = tflag6
+        .exportzp __FLAGS7__ = tflag7
+        .importzp __CFG_MAPPER__
+        .assert mapper = __CFG_MAPPER__, lderror, .sprintf("nesconfig: you selected the wrong linker script for this mapper (%d); use mapper%d.ld, if it exists",mapper,mapper)
+        isok .set 0
     .endif
 .endmacro
 
@@ -66,9 +69,9 @@
     .assert chr >= 0 .and chr < 256, error, "nessize: invalid number of CHR 8K banks"
     .assert ram >= 0 .and ram < 256, error, "nessize: invalid number of PRG-RAM 8K banks"
 
-    .export PRGROM_SZ16K : abs = rom
-    .export CHRROM_SZ8K  : abs = chr
-    .export PRGRAM_SZ8K  : abs = ram
+    .export __PRGROM_SZ16K__ : abs = rom
+    .export __CHRROM_SZ8K__  : abs = chr
+    .export __PRGRAM_SZ8K__  : abs = ram
 .endmacro
 
 ;-------------------------------------------------------------------------------

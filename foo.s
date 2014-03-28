@@ -1,25 +1,19 @@
 .include "configure.inc"
 .include "core.inc"
-
+;-------------------------------------------------------------------------------
 
 nesconfig horz, 69, off
-nessize 1
+nessize 4, 1
 
     .code
 reset:
     bit $2002
     bpl reset
 
-    ; FME-7: select bank 0 at $8000-9FFF
-    ldy #9
-    lda #0
-    sty $8000
-    sta $A000
-
 :   bit $2002
     bpl :-
 
-    lda #0
+    lda #$1E
     sta $2001
     lda #$80
     sta $2000
@@ -35,10 +29,11 @@ nmi:
     lda n0
     sta $2007
 
-    lda #$3F
-    sta $2006
-    lda #0
-    sta $2006
+    ; FME-7: select bank of some_routine where it expects to be run.
+    ldy #(8 + >.bank(some_routine))
+    lda #<.bank(some_routine)
+    sty $8000
+    sta $A000
 
     jsr some_routine
     rti
@@ -47,7 +42,12 @@ irq:
     sta r8
     rti
 
+    .byte "CODE"
+
     .segment "PRGBK00"
+    .byte "PRGBK00"
+
+    .segment "PRGBK01"
 some_routine:
     lda n1
     clc
@@ -58,4 +58,10 @@ some_routine:
     inc n0
 :   sta n1
     rts
+
+    .byte "PRGBK01"
+
+    .segment "CHRROM"
+    .byte "CHRROM"
+;-------------------------------------------------------------------------------
 

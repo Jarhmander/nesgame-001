@@ -13,7 +13,7 @@ MAPPER69_INC = 1
 ; where addr is located into its expected runtime address.
 
 .macro swbankprg_check addr
-    .assert >.bank(*) <> >.bank(addr), lderror, .sprintf("swbank: switching '%s' into its runtime address would switch into current runtime address", .string(addr))
+    .assert >.bank(*) <> >.bank(addr) .or .bank(*) = .bank(addr), lderror, .sprintf("swbank: switching '%s' into its runtime address would switch into current runtime address", .string(addr))
     .assert .bank(addr) <> $FFFF, lderror, .sprintf("swbank: symbol '%s' is located in the fixed bank; you cannot bankswitch the fixed bank", .string(addr))
 .endmacro
 

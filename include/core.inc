@@ -43,8 +43,8 @@ CORE_INC = 1
 
 .macro movw dest, src
     .if .match(.left(1, {src}),#)
-        mov dest+0, #<.right(.tcount({src})-1,{src})
-        mov dest+1, #>.right(.tcount({src})-1,{src})
+        mov dest+0, #<(.right(.tcount({src})-1,{src}))
+        mov dest+1, #>(.right(.tcount({src})-1,{src}))
     .else
         mov dest+0, src+0
         mov dest+1, src+1

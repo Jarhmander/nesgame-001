@@ -43,7 +43,8 @@ MEMORY {
         start  = $6000, size = $2000, type = rw;
 
     # fixed bank
-    ROMFB0: start = $E000, size = $2000, type = ro;
+    # Give it a special reserved bank attribute
+    ROMFB0: start = $E000, size = $2000, type = ro, bank = $FFFF;
 
     # Overlays for rom
     # Very verbose, vim was especially handy here...
@@ -328,7 +329,10 @@ SEGMENTS {
 
     # The various PRG banks, one may change the run address to another ROMSB0ATx000 
     PRGBK00:  load = PRGROM, type = ro, define = yes, align_load = $2000, align = $2000, optional = yes, run = ROMSB00AT8000;
-    PRGBK01:  load = PRGROM, type = ro, define = yes, align_load = $2000, align = $2000, optional = yes, run = ROMSB01AT8000;
+    DATA:     load = PRGROM, run = NESRAM, type = rw, define = yes;
+    EXDATA:   load = PRGROM, run = EXRAM,  type = rw, define = yes, optional = yes;
+              
+    PRGBK01:  load = PRGROM, type = ro, define = yes, align_load = $2000, align = $2000, optional = yes, run = ROMSB01ATC000;
     PRGBK02:  load = PRGROM, type = ro, define = yes, align_load = $2000, align = $2000, optional = yes, run = ROMSB02AT8000;
     PRGBK03:  load = PRGROM, type = ro, define = yes, align_load = $2000, align = $2000, optional = yes, run = ROMSB03AT8000;
     PRGBK04:  load = PRGROM, type = ro, define = yes, align_load = $2000, align = $2000, optional = yes, run = ROMSB04AT8000;
@@ -393,10 +397,9 @@ SEGMENTS {
     PRGBK63:  load = PRGROM, type = ro, define = yes, align_load = $2000, align = $2000, optional = yes, run = ROMSB63AT8000;
 
     # Fixed last PRG-ROM bank
-    # The DATA segment could be moved to a bank whose purpose is to init things, the contructor table and init code would be
-    # there too. 
+    # The DATA segment can be moved to PRGBK00.
     RODATA:     load = ROMFB0, run = ROMFB0, type = ro, align = $2000;
-    DATA:       load = ROMFB0, run = NESRAM, type = rw, define = yes;
+#    DATA:       load = ROMFB0, run = NESRAM, type = rw, define = yes;
     CODE:       load = ROMFB0, run = ROMFB0, type = ro;
     VECTORS:    load = ROMFB0, run = ROMFB0, type = ro, offset = $1FFA;
 
@@ -406,11 +409,11 @@ SEGMENTS {
 }
 
 # features:
-# order = increasing decreasing
-#FEATURES {
-#    CONDES: segment = RODATA,
-#                type = constructor,
-#                label = __CONSTRUCTOR_TABLE__,
-#                count = __CONSTRUCTOR_COUNT__;
-#}
+FEATURES {
+    CONDES:     segment = PRGBK00,
+                type    = constructor,
+                order   = increasing,
+                label   = __CONSTRUCTOR_TABLE__,
+                count   = __CONSTRUCTOR_COUNT__;
+}
 

@@ -1,5 +1,5 @@
 .ifndef MAPPER69_INC
-.define MAPPER69_INC
+MAPPER69_INC = 1
 ;-------------------------------------------------------------------------------
 
 ; This is a temp var that retain the last write to $8000, the command select 

@@ -1,5 +1,5 @@
 .ifndef CONTROLLER_INC
-.define CONTROLLER_INC
+CONTROLLER_INC = 1
 ;-------------------------------------------------------------------------------
 
 .global read_controller

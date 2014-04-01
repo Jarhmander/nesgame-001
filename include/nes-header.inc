@@ -1,5 +1,5 @@
 .ifndef NES_HEADER_INC
-.define NES_HEADER_INC
+NES_HEADER_INC = 1
 ;-------------------------------------------------------------------------------
 
 

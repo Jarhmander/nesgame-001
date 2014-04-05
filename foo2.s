@@ -9,7 +9,7 @@
     .segment "PRGBK00"
 
 .proc foo0
-    mov  $4015, #$0F
+;    mov  $4015, #$0F
 
     mov  $4000, #$FF
     movw $4002, #428

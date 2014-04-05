@@ -5,11 +5,11 @@ CC := cl65
 
 CREATE_DEP = --create-dep $(@:.o=.d)
 
-SRC_ASFLAGS := -t none --asm-include-dir include -g --debug-info
+SRC_ASFLAGS = -t none --asm-include-dir include -g --debug-info -Wa -l,$(@:.o=.lst)
 
 TGT_LDFLAGS := -t nes -C linker/mapper69.ld -m $(TARGET:.nes=.map) -Wl --dbgfile,$(TARGET:.nes=.dbg)
 
-TGT_POSTCLEAN := rm *.map *.dbg
+TGT_POSTCLEAN := rm -f *.map *.dbg
 
 BUILD_DIR := .build
 

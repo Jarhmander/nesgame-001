@@ -27,13 +27,24 @@ reset:
 
 :   bit $2002
     bpl :-
+    movw i0, #$E000
+    push =bla-1
+    rts
 
+jumpback:
     lda #$1E
     sta $2001
     lda #$80
     sta $2000
 
+    lda #$40
+    sta $4017
+    jsr enable_irq
+    cli
 :   jmp :-
+
+bla:
+    jmp jumpback
 
 nmi:
     lda #$3F
@@ -46,12 +57,44 @@ nmi:
 
     swbankprg_nosave some_routine
     jsr some_routine
+    mov $8000, mapper_cmdreg
+    rti
 
-    rti
 irq:
-    lda i0
-    sta r8
+    push A,X,Y
+
+    jsr enable_irq
+
+    ldy i2
+    mov $4011, {(i0),Y}
+    iny
+    sty i2
+
+    pop  A,X,Y
     rti
+
+enable_irq:
+    lda #$0d
+    sta mapper_cmdreg
+    sta $8000
+    lda #0
+    sta $A000
+    lda #$0E
+    sta mapper_cmdreg
+    sta $8000
+    lda #$04
+    sta $A000
+    lda #$0F
+    sta mapper_cmdreg
+    sta $8000
+    lda #$03
+    sta $A000
+    lda #$0D
+    sta mapper_cmdreg
+    sta $8000
+    lda #$FF
+    sta $A000
+    rts
 
     .byte "CODE"
 
@@ -75,6 +118,9 @@ some_routine:
     rts
 
     .byte "PRGBK01"
+
+    .segment "PRGBK02"
+    .byte "Some data goes here..."
 
     .segment "CHRROM"
     .byte "CHRROM"

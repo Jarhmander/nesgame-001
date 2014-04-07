@@ -47,6 +47,7 @@ bla:
     jmp jumpback
 
 nmi:
+    push A,X,Y
     lda #$3F
     sta $2006
     lda #0
@@ -58,6 +59,7 @@ nmi:
     swbankprg_nosave some_routine
     jsr some_routine
     mov $8000, mapper_cmdreg
+    pop A,X,Y
     rti
 
 irq:

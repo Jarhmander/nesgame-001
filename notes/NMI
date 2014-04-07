@@ -1,0 +1,24 @@
+NMI
+================================================================================
+
+Things to do in order:
+- set next IRQ (first because timing is important)
+- check reetrant NMI, exit if true ? Not sure if this can happen.
+- do_PPU_updates()
+- inc frame_count (2 bytes?) (can be in another bank)
+- read_controller() (can be in another bank)
+- do_sound_engine() (in another bank)
+
+do_PPU_updates()
+- exit if not ready
+- sprite dma
+- while data in PPU_buff: interpret data, update VRAM address, set inc, write.
+(It could be a bit more specialised, like update palette, nametable and 
+attributes separately)
+
+The reset code can wait for the completion of NMI, this can be done using the
+frame_count var, a tight loop that checks if it increments. If doing large 
+updates, rendering can be disabled in reset after completion of NMI, and the 
+reset code can write to VRAM itself, and when done let the NMI write the
+palette (mind the rainbow bug!) and enable rendering.
+

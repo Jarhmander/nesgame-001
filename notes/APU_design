@@ -1,0 +1,151 @@
+APU Design
+================================================================================
+
+APU capabilities
+--------------------------------------------------------------------------------
+
+_Squares features:_
+- Envelope generator or constant volume
+- Sweep unit
+- Duty cycle
+- Frequency
+- Length counter
+
+_Noise features:_
+- Envelope generator or constant volume
+- Pseudo-random sequence length
+- Frequency
+- Length counter
+
+_Triangle features_
+- Linear counter
+- Frequency
+- Lenght counter
+
+_DMC features_
+- Start address
+- Length
+- Frequency
+- Direct write
+- Normal/Loop/IRQ mode
+
+Used features
+--------------------------------------------------------------------------------
+_All:_
+- Frequency
+_Triangle:_
+- Linear counter (off/length)
+_Squares & Noise:_
+- Contant volume
+- Duty cycle/pseudo-random sequence length
+_DMC:_
+- Start address
+- Length
+- Frequency
+- Direct write
+- Loop mode
+
+For square & noise: because the length counter and envelope generator is not
+used, the first reg is ORed with $30. Length counter load is either random or
+1 (see triangle). The sweep unit is initialised to negate so low frequencies are
+not silenced. With careful writes to sweep unit and $4017, the high period value
+can be updated without phase reset. If we're careful enough to never disable
+noise (via $4015) then we just need a random write to its 4th reg, and never 
+write it afterward. Squares and noise can be silenced by putting their volume
+to 0.
+
+Triangle: linear counter looks useful, so I use it. Because DMC will always be
+playing (see DMC), triangle can be silenced by writes to $4015. To make the 
+linear counter the most flexible possible, length counter should be 1 (the
+longest count possible of 254; any counter value that results in lengths
+greater than 64 is ok). A routine that writes period registers to squares and
+triangle channel can always OR #$08 with the high write (it will be ok to the
+square waves even if we don't actually care of that value).
+
+DMC: This channel will always be playing: a silence byte ($55) will be played
+if there is nothing to play. Loop mode will always be enabled and the Play+Loop
+feature we developed will be extensibly used. So a "non-looping" sample (the
+occasional drum) will rewrite $4012 and $4013 to loop a silence byte (in the
+fixed bank), and to halt DMC playback, we'll play that silence byte. However,
+if the silence byte is too loud (it can certainly be heard at low frequencies)
+then the following should work: if the sample don't loop, use normal playback
+mode, but still do the second $4012 $4013 writes to silence byte to prevent
+replaying inadvertly the last sample. Halt playback with writes to $4012 $4013
+silent byte THEN halt playback using $4015 (no need to RMW). The triangle 
+silencing will have to RMW and will be subject to race conditions, but it will
+be rather benign: if the write trigger a DMC play, it will play a silence byte
+immediately after the last sample finishes (a 1->0 transition of $4015.4 only
+happens asychronously at the end of playback, when the last byte is in the
+shifter) so it will be unnoticeable because a loud DMC played just before
+(simple psychoacoustics). The $4012 $4013 writes for halting DMC sound might
+even be unnecessary.
+That's cool but we need to extensively test that writes just after DMC playback
+enable always works. A simple way to test would be to always start a sample 
+after N (very small, 10 or less) frames, always making the silent byte write.
+A silence would be very noticeable because it would break the beat.
+
+**ADDENDUM**: if we make use of the sweep trick, then the linear counter will
+be messed up by the $4017 writes. So, the only linear counter values that are
+safe are those equal or less than 4. Conclusion: the length counter value has
+no relevance. Nevertheless, to ensure a consistent timing of the linear
+counter, an extra $4017 write will be inserted after processing the square
+waves so the linear counter behavior is consistent within a frame.
+
+### Square & Noise volume ###
+
+Uses a 32-byte volume table:
+APU_voltable: .byte 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+So, volume is 5 bits and the base bits come from the upper 5 bits of the software ADSR.
+After calculating next envelope value:
+    lsr A
+    lsr A
+    lsr A
+    ora #$E0
+    sec
+    adc r0 ; contains volume (5 lsb)
+    bcc :+
+    tax
+    lda APU_voltable, X
+    rts
+:   lda #0
+    rts
+
+This replace a multiplier and has the added really nice benefit that the volume
+is exponential.
+
+ADSR code (WIP):
+    lda r2  ; flags (relocate)
+    and #3
+    cmp #1
+    beq decay
+    bcs release
+attack:
+    lda r0  ; current envelope (relocate)
+    clc
+    adc r1  ; Attack rate (relocate)
+    bcs :+
+    rts     ; A = env
+:   inc r2  ; flags (relocate)
+    
+    sbc r3  ; decay rate (relocate)
+    jmp sustain_chk
+decay:
+    lda r0  ; current envelope (relocate)
+    sec
+    sbc r3  ; decay rate (relocate)
+    bcc fixenv
+sustain_chk:
+    cmp r4  ; sustain level (relocate)
+    bcs nofixenv
+fixenv:
+    lda r4  ; sustain level (relocate)
+nofixenv:
+    rts     ; A = env
+release:
+    lda r0  ; current envelope (relocate)
+    sec 
+    sbc r5  ; release rate (relocate)
+    bcs :+
+    lda #0
+:   rts

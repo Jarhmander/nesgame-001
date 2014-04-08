@@ -98,54 +98,112 @@ APU_voltable: .byte 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 
 
 So, volume is 5 bits and the base bits come from the upper 5 bits of the software ADSR.
 After calculating next envelope value:
-    lsr A
-    lsr A
-    lsr A
-    ora #$E0
-    sec
-    adc r0 ; contains volume (5 lsb)
-    bcc :+
-    tax
-    lda APU_voltable, X
-    rts
-:   lda #0
-    rts
+
+        lsr A
+        lsr A
+        lsr A
+        ora #$E0
+        sec
+        adc r0 ; contains volume (5 lsb)
+        bcc :+
+        tax
+        lda APU_voltable, X
+        rts
+    :   lda #0
+        rts
 
 This replace a multiplier and has the added really nice benefit that the volume
 is exponential.
 
-ADSR code (WIP):
-    lda r2  ; flags (relocate)
-    and #3
-    cmp #1
-    beq decay
-    bcs release
-attack:
-    lda r0  ; current envelope (relocate)
-    clc
-    adc r1  ; Attack rate (relocate)
-    bcs :+
-    rts     ; A = env
-:   inc r2  ; flags (relocate)
-    
-    sbc r3  ; decay rate (relocate)
-    jmp sustain_chk
-decay:
-    lda r0  ; current envelope (relocate)
-    sec
-    sbc r3  ; decay rate (relocate)
-    bcc fixenv
-sustain_chk:
-    cmp r4  ; sustain level (relocate)
-    bcs nofixenv
-fixenv:
-    lda r4  ; sustain level (relocate)
-nofixenv:
-    rts     ; A = env
-release:
-    lda r0  ; current envelope (relocate)
-    sec 
-    sbc r5  ; release rate (relocate)
-    bcs :+
-    lda #0
-:   rts
+    ADSR code (WIP):
+        lda r2  ; flags (relocate)
+        and #3
+        cmp #1
+        beq decay
+        bcs release
+    attack:
+        lda r0  ; current envelope (relocate)
+        clc
+        adc r1  ; Attack rate (relocate)
+        bcs :+
+        rts     ; A = env
+    :   inc r2  ; flags (relocate)
+        
+        sbc r3  ; decay rate (relocate)
+        jmp sustain_chk
+    decay:
+        lda r0  ; current envelope (relocate)
+        sec
+        sbc r3  ; decay rate (relocate)
+        bcc fixenv
+    sustain_chk:
+        cmp r4  ; sustain level (relocate)
+        bcs nofixenv
+    fixenv:
+        lda r4  ; sustain level (relocate)
+    nofixenv:
+        rts     ; A = env
+    release:
+        lda r0  ; current envelope (relocate)
+        sec 
+        sbc r5  ; release rate (relocate)
+        bcs :+
+        lda #0
+    :   rts
+
+### Frequency ###
+
+Frequency is manipulated internally in floating-point-like values:
+
+bits:
+sssmmmmmmmm (11 bits)
+
+The resulting value is ($100+m)*2^(s-5), so it can span values from 8 to 2044
+($7FC). The reasons of manipulating frequencies like that is:
+- Byte-sized entries for notes (octave can be inferred from note with code like
+cpx #N, adc #0; add 1 to s if X>=N)
+- Vibratos have the same depth when changing octave, they only modulate within
+an octave (and a simple 2-step linear approximation within an octave can do the
+trick)
+- Portamentos and glissandos can be parametrised with 1 byte (no need of
+something faster than 1 oct/frame) and will slide each octave at the same 
+speed, only within an octave there would be a "linear error" (and again, with
+a linear approximation, can be even better)
+
+_Linear approximation:_
+This is the octave algorithm doing the "floating-point" to value:
+
+    y= (m+256)*2.^(s-5);
+
+Now this is a possible implementation doing the "floating-log" to expanded
+value:
+
+    y=(min(floor([m*5/4, 32+m*7/8]))+256)*2.^(s-5);
+
+Note that the linear approximation is m >= 106 ? 32+m*7/8 : m*5/4. The 
+intersection point is 106. We should verify which of the octave implementation
+or the C-like formulation is faster, but I expect the later to be faster.
+
+(Oops: I think it is y=(max(floor([m*7/8, m*5/4-64]))+256)*2.^(s-5);
+and the C-like formulation m >= 148 ? m*5/4-64 : m*7/8 instead of the above;
+I get confused with inversion, additionally, changing 7/8 to 13/16 is more
+accurate)
+
+_Table-based approximation:_
+
+Computing the above is not so fast even if they're constants. Instead, the use
+of a "diff table" of 32/64 byte can do the trick. We do the following:
+
+        ; A contain the "linear" value
+        tay
+        lsr A
+        lsr A   ; one more for 32 byte table
+        tax
+        tya
+        sec
+        sbc difftable, X
+
+... and we're done. Very accurate transformation that will not affect too much
+the tuning.
+
+

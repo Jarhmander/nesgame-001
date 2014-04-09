@@ -14,7 +14,7 @@ TGT_POSTCLEAN := rm -f *.map *.dbg
 BUILD_DIR := .build
 
 
-SOURCES := foo.s foo2.s
+SOURCES := foo.s
 SOURCES += src/init.s
 SOURCES += src/controller.s
 SOURCES += src/core.s
@@ -24,4 +24,6 @@ SOURCES += src/common.s
 SOURCES += src/checkbanks.s
 SOURCES += src/reset.s
 SOURCES += src/resetbanks.s
+SOURCES += src/video.s
+SOURCES += src/nmi.s
 

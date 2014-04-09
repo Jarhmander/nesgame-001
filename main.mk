@@ -22,4 +22,6 @@ SOURCES += src/nes-header.s
 SOURCES += src/mapper69.s
 SOURCES += src/common.s
 SOURCES += src/checkbanks.s
+SOURCES += src/reset.s
+SOURCES += src/resetbanks.s
 

@@ -13,9 +13,10 @@
 
 .endrepeat
 
+;-------------------------------------------------------------------------------
 ; void *memcpy(void *dest, const void *src, size_t len)
 ; returns: dest
-
+;
 .proc memcpy
     ldx r4      ; X = r4 
     cpx #1      ; r5 = r5 + !!X
@@ -50,10 +51,10 @@
 exit:
     rts
 .endproc
-
+;-------------------------------------------------------------------------------
 ; void *memset(void *mem, int c, size_t len)
 ; returns: mem
-
+;
 .proc memset
     ldx r4      ; X = r4 
     cpx #1      ; r5 = r5 + !!X
@@ -78,4 +79,5 @@ exit:
 exit:
     rts
 .endproc
+;-------------------------------------------------------------------------------
 

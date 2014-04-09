@@ -1,5 +1,6 @@
 .include "nes-header.inc"
 ;-------------------------------------------------------------------------------
+
 .segment "NESHEADER"
     ; Based on NESDev wiki (http://wiki.nesdev.com/w/index.php/INES)
 

@@ -33,9 +33,15 @@ frame_count:    .res 2
 .endproc
 ;-------------------------------------------------------------------------------
 .proc wait_vblank
-    lda frame_count
-:   cmp frame_count
+    ldx frame_count
+:   cpx frame_count
     beq :-
+    rts
+.endproc
+;-------------------------------------------------------------------------------
+.proc wait_vblank_setctrl
+    jsr wait_vblank
+    sta $2000
     rts
 .endproc
 ;-------------------------------------------------------------------------------

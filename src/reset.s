@@ -10,13 +10,15 @@
 ;-------------------------------------------------------------------------------
 .proc reset
     ; __pre_init_0
-    sei             ; Disable NMI and IRQs
-    ldx #$0         ;
-    stx $2000       ;
+    sei             ; Disable NMI and IRQs (for warm boot, mind that the
+    ldx #$0         ; famicom's PPU doesn't have its reset pin connected to CPU
+    stx $2000       ; reset so the PPU might be in the middle of a frame)
+    stx $2001       ; Disable rendering (for warm boot)
 
     dex             ; S = $FF
     txs             ;
 
+    bit $2002       ; Clear the flag if set (for warm boot)
 :   bit $2002       ; First wait for V-blank
     bpl :-
 
@@ -27,8 +29,7 @@
 :   bit $2002       ; Second wait for V-blank
     bpl :-          ;
 
-    lda #$80        ; Enable NMI
-    sta $2000       ; This V-blank will be missed however
+    mov $2000, #$80 ; Enable NMI (this V-blank however is completely missed)
     
     ; main
     jsr main_swbank ; bank main and call it

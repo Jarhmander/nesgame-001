@@ -16,7 +16,7 @@
 :   lda $4016,x
     and #3
     cmp #1
-    asl r0
+    rol r0
     bcc :-
     lda r0
 exit:

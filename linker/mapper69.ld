@@ -398,7 +398,8 @@ SEGMENTS {
 
     # Fixed last PRG-ROM bank
     # The DATA segment can be moved to PRGBK00.
-    RODATA:     load = ROMFB0, run = ROMFB0, type = ro, align = $2000;
+    DMCBYTE:    load = ROMFB0, run = ROMFB0, type = ro, align = $2000;
+    RODATA:     load = ROMFB0, run = ROMFB0, type = ro;
 #    DATA:       load = ROMFB0, run = NESRAM, type = rw, define = yes;
     CODE:       load = ROMFB0, run = ROMFB0, type = ro;
     VECTORS:    load = ROMFB0, run = ROMFB0, type = ro, offset = $1FFA;

@@ -206,4 +206,58 @@ of a "diff table" of 32/64 byte can do the trick. We do the following:
 ... and we're done. Very accurate transformation that will not affect too much
 the tuning.
 
+_Tuning:_
+
+With the number format, the tuning is:
+
+1200*log2(Clock/reg)
+1200*(log2(Clock) - log2(reg))
+1200*(log2(Clock) - log2((256+m)*2^(s-5)))
+1200*(log2(Clock) - log2((256+(256*(1-2^(x/256)))*2^(s-5)))
+1200*(log2(Clock) - log2(256-256 + 256*2^(x/256)*2^(s-5))
+1200*(log2(Clock) - log2(2^(x/256+s+3))
+1200*(log2(Clock) - x/256 + s + 3)
+
+in cents. Now it is trivial to see that the resolution is 1200/256, or ~4.6875
+cents.
+
+Code (WIP):
+    lda r0
+    sec
+    sbc #5
+    tay
+    lda r1
+    bcs posshift
+
+    sec
+    ror A
+
+    ... cpys
+
+    lsr A
+    lsr A
+    lsr A
+    lsr A
+    lsr A
+    sta r2
+    lda #0
+    sta r3
+    rts
+posshift:
+    ... cpys
+
+    sec
+    rol A
+    rol A
+    rol A
+    sta r3
+    and t1, Y
+    sta r2
+    lda r3
+    rol r3
+    and t2, Y
+    sta r3
+    rts
+t1: .byte $FF, $FE, $FC
+t2: .byte 0,   1,   3
 

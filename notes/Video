@@ -1,0 +1,78 @@
+PPU updates
+================================================================================
+
+Possible commands:
+- Nametable write line: addr len data (14 bits + ?)
+- Nametable write col:  addr len data (14 bits + ?)
+- Palette write: 
+  - single (5 bits) (?)
+  - group (3 bits)
+  - background/sprite (1 bit) (?)
+  - all (0 bit)
+
+Encoding:
+
+Nametable write line:
+00hhhhhh llllllll ssssssss ...
+
+h: upper 6 bits of address
+l: lower 8 bits of address
+s: size of data
+
+Nametable write col:
+01hhhhhh llllllll ssssssss ...
+
+(same)
+
+???Attribute write???
+10 ????
+
+???
+
+Palette write group:
+11001ggg
+
+g: group of 4 palette
+
+Palette write all:
+11000000
+
+Extension:
+11000001 xxxxxxxx ...
+
+x: variadic extension
+
+
+There are 30 lines of 32 tiles.
+
+2000  line 0   1F: select tile in line
+2020  line 1
+2040  line 2
+2060  line 3
+2080  line 4
+...   ...
+2300  line 24
+2320  line 25
+2340  line 26
+2360  line 27
+2380  line 28
+23A0  line 29
+
+Attributes:
+23C0  tile 0-3 lines 0-3    2000..2003, 2060..2063
+23C1  tile 4-7              2004, 2007, 2064, 2067
+23C2  tile 8-11             2008, 200B, 2068, 206B
+...
+23C6  tile 26-29            2018..201B, 2078..207B
+23C7  tile 28-31            201C..201F, 207C..207F
+23C8  tile 0-3 lines 4-7    2080..2083, 20E0..20E3
+23C9  tile 4-7              2084..2087, 20E4..20E7
+23CA  tile 8-11             2088..208B, 20E8..20EB
+...
+
+So, in conclusion:
+Tile in line y at col x is at $2000 + x + y * $20 + NT * $400
+and belongs to attribute byte at $23C0 + x>>2 + (y>>2) * 8 + NT * $400
+and in this byte, it is the 2 bits at bit (x&2 + y*2&2) and (x&2 + y*2&2 + 1)
+that affect that tile.
+

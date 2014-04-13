@@ -37,7 +37,9 @@ MEMORY {
     STACK:
         start  = $100, size = 256,  type = rw;
     NESRAM:
-        start  = $200, size = $600, type = rw;
+        start  = $200, size = $500, type = rw;
+    OAM:
+        start  = $700, size = $100, type = rw;
 
     EXRAM:
         start  = $6000, size = $2000, type = rw;
@@ -323,6 +325,7 @@ SEGMENTS {
     ZEROPAGE: load = ZEROPAGE, type = zp;
     BSS:      load = NESRAM,   type = bss, define = yes;
     EXRAM:    load = EXRAM,    type = bss, optional = yes;
+    OAM:      load = OAM,      type = bss;
 
     # Mandatory NES header
     NESHEADER:  load = RES_DUMMYNESHEADER,   type = ro;

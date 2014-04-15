@@ -1,6 +1,7 @@
 .include "nmi.inc"
 ;-------------------------------------------------------------------------------
 .include "core.inc"
+.include "mapper69.inc"
 .include "video.inc"
 .include "audio.inc"
 ;-------------------------------------------------------------------------------
@@ -28,6 +29,10 @@ frame_count:    .res 2
 
     ; sound engine
 
+    ; restore mapper reg
+    mov $8000, mapper_cmdreg
+
+    ; prolog
     pop A, X, Y
     rti
 .endproc

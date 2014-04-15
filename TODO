@@ -1,12 +1,12 @@
 TODO
 ================================================================================
 
-- Make the reset code in another file.
-- In reset, before ```jsr init```, change to ```jsr init_swbank```. This code 
+x Make the reset code in another file.
+x In reset, before ```jsr init```, change to ```jsr init_swbank```. This code 
 is responsible of switching banks so the init code can be called, DATA be
 reachable, constructors be reachable and if necessary, enable EXRAM.
-- reset calls main, if it returns put some defined garbage into APU and loop 
+x reset calls main, if it returns put some defined garbage into APU and loop 
 forever; main shall not return, ever! (Except if game is finished? So it would
 be a simple way to put game in "stall state"?)
-- Before calling main, reset would call ```main_swbank```, it makes main 
+x Before calling main, reset would call ```main_swbank```, it makes main 
 reachable, no more.

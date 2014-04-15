@@ -18,14 +18,14 @@
 ; returns: dest
 ;
 .proc memcpy
-    ldx r4      ; X = r4 
+    ldx r4      ; X = r4
     cpx #1      ; r5 = r5 + !!X
     lda r5
     adc #0
     bne :+
     bcc exit    ; if C is clear and result is 0, then r5:r4 is 0
 :   sta r5
-    
+
     lda r2      ; r3:r2 = r3:r2 - r0
     sec         ; Adjust src ptr (see below)
     sbc r0
@@ -56,7 +56,7 @@ exit:
 ; returns: mem
 ;
 .proc memset
-    ldx r4      ; X = r4 
+    ldx r4      ; X = r4
     cpx #1      ; r5 = r5 + !!X
     lda r5
     adc #0
@@ -76,6 +76,61 @@ exit:
     bne  @loop
     dec  r5
     bne  @loop
+exit:
+    rts
+.endproc
+;-------------------------------------------------------------------------------
+; void memcpy_vram(unsigned vramaddr, const void *src, size_t len)
+; returns: nothing
+.proc memcpy_vram
+    ldx r4      ; X = r4
+    cpx #1      ; r5 = r5 + !!X
+    lda r5
+    adc #0
+    bne :+
+    bcc exit    ; if C is clear and result is 0, then r5:r4 is 0
+:   sta r5
+
+    ldy r2
+    mov r2, #0
+    bit $2002
+    mov $2006, r0
+    mov $2006, r1
+@loop:
+    mov $2007, {(r2), y}
+    iny
+    bne :+
+    inc r3
+:   dex
+    bne @loop
+    dec r5
+    bne @loop
+exit:
+    rts
+.endproc
+;-------------------------------------------------------------------------------
+; void memset_vram(unsigned vramaddr, const void *src, size_t len)
+; returns: nothing
+;
+.proc memset_vram
+    ldx r4      ; X = r4
+    cpx #1      ; r5 = r5 + !!X
+    lda r5
+    adc #0
+    bne :+
+    bcc exit    ; if C is clear and result is 0, then r5:r4 is 0
+:   tay
+
+    bit $2002
+    mov $2006, r0
+    mov $2006, r1
+@loop:
+    mov $2007, r2
+    dex
+    bne @loop
+    dey
+    bne @loop
+
 exit:
     rts
 .endproc

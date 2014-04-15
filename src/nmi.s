@@ -17,7 +17,7 @@ frame_count:    .res 2
 
     ; check if NMI reentered? ...
     ; ...
-    
+
     jsr do_PPU_updates
 
     inc frame_count
@@ -39,9 +39,10 @@ frame_count:    .res 2
     rts
 .endproc
 ;-------------------------------------------------------------------------------
-.proc wait_vblank_setctrl
+.proc wait_vblank_setppumask
     jsr wait_vblank
-    sta $2000
+    sta video_ppumask
+    sta $2001
     rts
 .endproc
 ;-------------------------------------------------------------------------------

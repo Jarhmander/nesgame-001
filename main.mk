@@ -28,3 +28,5 @@ SOURCES += src/video.s
 SOURCES += src/audio.s
 SOURCES += src/nmi.s
 
+SOURCES += src/gfx.s
+

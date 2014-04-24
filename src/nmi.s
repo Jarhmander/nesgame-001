@@ -18,7 +18,7 @@ frame_count:    .res 2
 
     ; check if NMI reentered? ...
     ; ...
-
+    ; inline?
     jsr do_PPU_updates
 
     inc frame_count
@@ -37,17 +37,19 @@ frame_count:    .res 2
     rti
 .endproc
 ;-------------------------------------------------------------------------------
+; void wait_vblank_setppumask(uint8_t ppumask) __noclobber__
+;
+.proc wait_vblank_setppumask
+    sta video_ppumask
+    ; inline tail call
+.endproc
+;-------------------------------------------------------------------------------
+; void wait_vblank(void) __noclobber__
+;
 .proc wait_vblank
     ldx frame_count
 :   cpx frame_count
     beq :-
-    rts
-.endproc
-;-------------------------------------------------------------------------------
-.proc wait_vblank_setppumask
-    jsr wait_vblank
-    sta video_ppumask
-    sta $2001
     rts
 .endproc
 ;-------------------------------------------------------------------------------

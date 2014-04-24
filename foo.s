@@ -16,6 +16,14 @@ nessize 4, 1
 
     .segment "PRGBK00"
 
+initppu:
+    .byte $C3, $C1, $C6     ; rendering on, update palette, ScrnA mirroring.
+    .byte $C8, 0, $C9, 1    ; Banking CHR
+    .dbyt $2000 + 5 + (15 << 5)
+    .byte 21, "THIS IS JARHMANDER!!!"
+
+initppu_size = * - initppu
+
 ;-------------------------------------------------------------------------------
 .proc main
     ldy video_bufferptrW
@@ -23,6 +31,7 @@ nessize 4, 1
     sty video_bufferptrW
     jsr wait_vblank
 
+    mov video_ppumask, #$1E
     lda video_ppuctrl
     and #<~$4
     sta $2000
@@ -33,26 +42,12 @@ nessize 4, 1
 
     ldy video_bufferptrW
     inc OAM_ready
-    push_PPU y+, #$C3
-    push_PPU y+, #$C1
-    push_PPU y+, #$C6
-    push_PPU y+, #$21
-    push_PPU y+, #$E8
-    push_PPU y+, #$88
-    push_PPU y+, #$21
-    push_PPU y+, #$A4
-    push_PPU y+, #$30
-    push_PPU y+, #$84
-    push_PPU y+, #$22
-    push_PPU y+, #$23
-    push_PPU y+, #$24
-    push_PPU y+, #$31
-    push_PPU y+, #$61
-    push_PPU y+, #$70
-    push_PPU y+, #$83
-    push_PPU y+, #$24
-    push_PPU y+, #$C8
-    push_PPU y+, #$00
+
+    sty  r0
+    movw r1, #initppu
+    mov  r3, #<initppu_size
+    jsr memcpy_ppu
+    tay
     mov palette+ 3, #$20
 
     sty video_bufferptrW
@@ -145,11 +140,6 @@ nessize 4, 1
     ldx #6
     jsr wait_x_frames
 
-    mov palette+3, #$1D
-    push_PPU y+, #$D0
-    sty video_bufferptrW
-    ldx #6
-    jsr wait_x_frames
     ; Quit and stall!
     rts
 
@@ -158,6 +148,20 @@ wait_x_frames:
 :   jsr wait_vblank
     dec r0
     bne :-
+    rts
+
+; uint8_t memcpy_ppu(uint8_t dest, const void *src, uint8_t len)
+memcpy_ppu:
+    ldx r0
+    ldy #0
+:   lda (r1),y
+    push_PPU x+
+    iny
+    bne :+
+    inc r2
+:   dec r3
+    bne :--
+    txa
     rts
 .endproc
 ;-------------------------------------------------------------------------------

@@ -46,7 +46,8 @@ scroll_y:           .res 1
 ; | Write continue          | $80|<rlen>, <data> [...]       <rlen> mask: $3F |
 ; | Update background color | $C0                                             |
 ; | Update all palette      | $C1                                             |
-; | Set rendering           | $C2|<state>                   <state> mask: $01 |
+; | Set rendering           | $C2                                             |
+; | Set scroll              | $C3, <ppuctrl>, <scroll_x>, <scroll_y>          |
 ; | Change mirroring        | $C4|<mirrorbits>         <mirrorbits> mask: $03 |
 ; | Change CHR banks        | $C8|<sel>, <banknum>            <sel> mask: $07 |
 ; | Update palette group    | $D0|<sel>                       <sel> mask: $07 |
@@ -104,12 +105,20 @@ scroll_y:           .res 1
 ;   All the NES palette is updated to the contents of palette. The background
 ;   palette mirrors are all skipped unlike the above Write line/col commands.
 ;
-; _Set rendering on/off:_
-;  %1100001r
-;  Data: $C2
-;  Mask: $01
+; _Set scroll:_
+;  %11000010
+;  Data: $C2 $00 $00 $00
+;  Mask: $00 $FF $FF $FF
 ;
-;   Enables sprites and background when r is 1, otherwise disables them.
+;   Copy the next data to video_ppuctrl, scroll_x and scroll_y. If rendering is
+;   enabled, scroll registers are reset at the end of PPU_updates.
+;
+; _Set rendering:_
+;  %11000011
+;  Data: $C3
+;  Mask: $00
+;
+;   Copy video_ppumask to $2001, changing rendering settings.
 ;
 ; _Change mirroring:_
 ;  %110001mm
@@ -410,14 +419,19 @@ upd_all_palette:
     jmp check_loop
 
 ; - - - - - - - - - - - - - - -
-; $C2-$C3
+; $C2
+upd_set_scroll:
+    mov video_ppuctrl, {PPU_buff, y}
+    iny
+    mov scroll_x,      {PPU_buff, y}
+    iny
+    mov scroll_y,      {PPU_buff, y}
+    iny
+    jmp check_loop
+; - - - - - - - - - - - - - - -
+; $C3
 upd_set_rendering:
     lda video_ppumask
-    and #<~$18
-    cpx #2  ; Check if code was $C2
-    beq :+
-    ora #$18
-:   sta video_ppumask
     sta $2001
     jmp check_loop
 ; - - - - - - - - - - - - - - -
@@ -440,12 +454,12 @@ upd_set_chrbank:
     jmp check_loop
 ; - - - - - - - - - - - - - - -
 C0_jumptable_lo:
-    .lobytes upd_background, upd_all_palette, upd_set_rendering, upd_set_rendering
+    .lobytes upd_background, upd_all_palette, upd_set_scroll, upd_set_rendering
     .lobytes upd_set_mirroring, upd_set_mirroring, upd_set_mirroring, upd_set_mirroring
     .lobytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
     .lobytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
 C0_jumptable_hi:
-    .hibytes upd_background, upd_all_palette, upd_set_rendering, upd_set_rendering
+    .hibytes upd_background, upd_all_palette, upd_set_scroll, upd_set_rendering
     .hibytes upd_set_mirroring, upd_set_mirroring, upd_set_mirroring, upd_set_mirroring
     .hibytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
     .hibytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank

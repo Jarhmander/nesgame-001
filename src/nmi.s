@@ -28,6 +28,8 @@ frame_count:    .res 2
     ; read controller
 
     ; sound engine
+    swbankprg_nosave sound_engine
+    jsr sound_engine
 
     ; restore mapper regs
     ldx #8

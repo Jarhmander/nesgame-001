@@ -50,12 +50,12 @@ used, the first reg is ORed with $30. Length counter load is either random or
 1 (see triangle). The sweep unit is initialised to negate so low frequencies are
 not silenced. With careful writes to sweep unit and $4017, the high period value
 can be updated without phase reset. If we're careful enough to never disable
-noise (via $4015) then we just need a random write to its 4th reg, and never 
+noise (via $4015) then we just need a random write to its 4th reg, and never
 write it afterward. Squares and noise can be silenced by putting their volume
 to 0.
 
 Triangle: linear counter looks useful, so I use it. Because DMC will always be
-playing (see DMC), triangle can be silenced by writes to $4015. To make the 
+playing (see DMC), triangle can be silenced by writes to $4015. To make the
 linear counter the most flexible possible, length counter should be 1 (the
 longest count possible of 254; any counter value that results in lengths
 greater than 64 is ok). A routine that writes period registers to squares and
@@ -71,7 +71,7 @@ if the silence byte is too loud (it can certainly be heard at low frequencies)
 then the following should work: if the sample don't loop, use normal playback
 mode, but still do the second $4012 $4013 writes to silence byte to prevent
 replaying inadvertly the last sample. Halt playback with writes to $4012 $4013
-silent byte THEN halt playback using $4015 (no need to RMW). The triangle 
+silent byte THEN halt playback using $4015 (no need to RMW). The triangle
 silencing will have to RMW and will be subject to race conditions, but it will
 be rather benign: if the write trigger a DMC play, it will play a silence byte
 immediately after the last sample finishes (a 1->0 transition of $4015.4 only
@@ -80,7 +80,7 @@ shifter) so it will be unnoticeable because a loud DMC played just before
 (simple psychoacoustics). The $4012 $4013 writes for halting DMC sound might
 even be unnecessary.
 That's cool but we need to extensively test that writes just after DMC playback
-enable always works. A simple way to test would be to always start a sample 
+enable always works. A simple way to test would be to always start a sample
 after N (very small, 10 or less) frames, always making the silent byte write.
 A silence would be very noticeable because it would break the beat.
 
@@ -96,7 +96,8 @@ waves so the linear counter behavior is consistent within a frame.
 Uses a 32-byte volume table:
 APU_voltable: .byte 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15
 
-So, volume is 5 bits and the base bits come from the upper 5 bits of the software ADSR.
+So, volume is 5 bits and the base bits come from the upper 5 bits of the
+software ADSR.
 After calculating next envelope value:
 
         lsr A
@@ -128,7 +129,7 @@ is exponential.
         bcs :+
         rts     ; A = env
     :   inc r2  ; flags (relocate)
-        
+
         sbc r3  ; decay rate (relocate)
         jmp sustain_chk
     decay:
@@ -145,7 +146,7 @@ is exponential.
         rts     ; A = env
     release:
         lda r0  ; current envelope (relocate)
-        sec 
+        sec
         sbc r5  ; release rate (relocate)
         bcs :+
         lda #0
@@ -166,7 +167,7 @@ cpx #N, adc #0; add 1 to s if X>=N)
 an octave (and a simple 2-step linear approximation within an octave can do the
 trick)
 - Portamentos and glissandos can be parametrised with 1 byte (no need of
-something faster than 1 oct/frame) and will slide each octave at the same 
+something faster than 1 oct/frame) and will slide each octave at the same
 speed, only within an octave there would be a "linear error" (and again, with
 a linear approximation, can be even better)
 
@@ -180,7 +181,7 @@ value:
 
     y=(min(floor([m*5/4, 32+m*7/8]))+256)*2.^(s-5);
 
-Note that the linear approximation is m >= 106 ? 32+m*7/8 : m*5/4. The 
+Note that the linear approximation is m >= 106 ? 32+m*7/8 : m*5/4. The
 intersection point is 106. We should verify which of the octave implementation
 or the C-like formulation is faster, but I expect the later to be faster.
 
@@ -221,24 +222,43 @@ With the number format, the tuning is:
 in cents. Now it is trivial to see that the resolution is 1200/256, or ~4.6875
 cents.
 
-Code (WIP):
-    lda r0
+We'll call the first format "logarithmic" or simply "log", and the second
+format "linearized" or "linear". The last format is then transformed to register
+writes. (Maybe we should do the log->reg transformation all at once?)
+
+linear2reg:
+    lda r0  ; shift amount
     sec
     sbc #5
     tay
-    lda r1
+    lda r1  ; mantissa
     bcs posshift
 
     sec
     ror A
 
-    ... cpys
+    ; A = [FB..FF] (negative)
+    ; Right shifts
 
+    cpy #$FC
+    bcc @FB
+    beq @FC
+    cpy #$FE
+    bcc @FD
+    beq @FE
+    bcs @FF
+
+@FB:
     lsr A
+@FC:
     lsr A
+@FD:
     lsr A
+@FE:
     lsr A
-    lsr A
+@FF:
+            ; 13, 13, 15, 15, 15
+    sbc #0  ; A = A - 1, + 1 if result > .5
     sta r2
     lda #0
     sta r3
@@ -249,7 +269,9 @@ posshift:
     sec
     rol A
     rol A
+@s1:
     rol A
+@s0:
     sta r3
     and t1, Y
     sta r2

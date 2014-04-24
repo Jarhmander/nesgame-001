@@ -9,12 +9,12 @@
 .proc init_swbank
     swbankprg_nosave init   ; make init visible
                             ; bank EXRAM (optional, not done)
-    rts 
+    rts
 .endproc
 ;-------------------------------------------------------------------------------
 .proc main_swbank
     .import main
-    swbankprg_nosave main   ; make main visible
+    swbankprg main          ; make main visible
     rts
 .endproc
 ;-------------------------------------------------------------------------------

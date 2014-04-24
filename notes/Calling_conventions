@@ -12,9 +12,11 @@ subroutine.
 - r0-r7, i0-i7, n0-n7 are parameters/scratch variables that reset, IRQ and NMI
 code can freely use, respectively. They are caller-saved registers that can
 also used to pass parameters/return values; because the callee can tamper any
-of these registers, the content of these registers are undefined when callee 
-returns unless they hold return value(s) (See parameter passing and return 
+of these registers, the content of these registers are undefined when callee
+returns unless they hold return value(s) (See parameter passing and return
 values).
+- A routine qualified as "no clobber" doesn't modify any of the scratch
+registers r0-r7, i0-i7, n0-n7.
 - 6502 registers A, X, Y and P are caller-saved registers, too. They can also
 be used to pass parameters/return values. 6502 register S however is a
 callee-saved register, meaning that S must be exactly the same before and after
@@ -24,26 +26,28 @@ code shall not call NMI-context routines. NMI code shall not call IRQ-context
 routines. IRQs shall not be enabled inside IRQ code. NMI- and IRQ-context code
 shall not call reset-context code unless r0-r7 are preserved beforehand and
 restored before returning from NMI/IRQ. IRQ and NMI code shall preserve A,X and
-Y registers (P is already preserved) and restore them before returning from 
+Y registers (P is already preserved) and restore them before returning from
 IRQ/NMI. Undefined behavior results if any of the above is not observed.
 - Exported user and library functions shall obey calling convention rules.
 Internal and private functions, however, may disregard any or all rules, except
-the previous point, and the only requirement is that the overall observed 
+the previous point, and the only requirement is that the overall observed
 behavior of the exported user/library function that called private/internal
-functions appears to observe calling conventions.
+functions appears to observe calling conventions. Moreover, an exported
+user/library function calling another one withing the same module may use
+knowledge of the use of scratch register.
 
 
 Passing parameters and return values
 ================================================================================
 
-- If the number of parameters are between 1 and 3 inclusive, and they are all 
+- If the number of parameters are between 1 and 3 inclusive, and they are all
 byte-sized, then parameters are placed in A, X and Y, in that order. Otherwise,
-parameters are placed in sequencial registers locations r0-r7; any additional 
+parameters are placed in sequencial registers locations r0-r7; any additional
 parameters are placed on the stack, last parameter pushed first. Proper
 endianness shall be observed: a word (or any bigger number) shall have the
 lsbyte closer to the top of stack; that means that the lsbyte is pushed last.
 - A variadic function is a function with an unspecified number of parameters.
-A variadic function can have 0 or more defined parameters; the defined 
+A variadic function can have 0 or more defined parameters; the defined
 parameters are allocated as the previous rule dictates, and the variadic
 parameters themselves are always placed on stack, with the same order specified
 in the previous rule. That means that a function with 1 byte-sized argument and

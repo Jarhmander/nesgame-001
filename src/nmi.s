@@ -29,7 +29,14 @@ frame_count:    .res 2
 
     ; sound engine
 
-    ; restore mapper reg
+    ; restore mapper regs
+    ldx #8
+:   stx $8000
+    mov $A000, {mapper_prgbanks-8, x}
+    inx
+    cpx #(mapper_prgbanks_size + 8)
+    bcc :-
+
     mov $8000, mapper_cmdreg
 
     ; prolog

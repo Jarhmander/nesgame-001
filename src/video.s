@@ -41,7 +41,7 @@ scroll_y:           .res 1
 ; +-------------------------+-------------------------------------------------+
 ; | Operation               | Encoding                                        |
 ; +-------------------------+-------------------------------------------------+
-; | Write line (*)          | $00|<addr_hi>, <addr_lo>, <rlen>, <data> [...]  |
+; | Write line              | $00|<addr_hi>, <addr_lo>, <rlen>, <data> [...]  |
 ; | Write col               | $40|<addr_hi>, <addr_lo>, <rlen>, <data> [...]  |
 ; | Write continue          | $80|<rlen>, <data> [...]       <rlen> mask: $3F |
 ; | Update background color | $C0                                             |
@@ -53,9 +53,6 @@ scroll_y:           .res 1
 ; | Update palette group    | $D0|<sel>                       <sel> mask: $07 |
 ; +-------------------------+-------------------------------------------------+
 ;
-; (*): if <addr_hi> is $3F (points the palette) and <addr_lo> is >= $20, then
-;      palette buffer is also updated.
-;
 ; Detailed description
 ; -----------------------------------------------------------------------------
 ; _Write line_:
@@ -64,13 +61,9 @@ scroll_y:           .res 1
 ;  Mask: $3F $FF $FF
 ;
 ;   Sets increment to 1 and sets PPU address to %00hhhhhhllllllll. Writes
-;   sssssss bytes to $2007. If hhhhhh = $3F (palette address) and
-;   llllllll >= $20 then update palette buffer too with this data. Regardless of
-;   how the palette is updated with this command, it won't do any special
-;   treatment to the background palette mirrors.
-;
-;   If r is 0, the following sssssss bytes will be copied (normal mode);
-;   otherwise, the next byte is copied sssssss times (repeat mode).
+;   sssssss bytes to $2007. If r is 0, the following sssssss bytes will be
+;   copied (normal mode); otherwise, the next byte is copied sssssss times
+;   (repeat mode).
 ;
 ; _Write col_:
 ;  %01hhhhhh llllllll rsssssss [data ...]
@@ -196,14 +189,11 @@ PPU_loop:
     ; PPU write line/col
     ; %0?xxxxxx
     iny
-    cmp #$3F
-    bcc update_line
-    beq update_palette_inline
-
-    ; PPU write col
-    ; %01xxxxxx
+    ldx n0
+    cmp #$40
+    bcc :+
     ldx n1
-    stx $2000
+:   stx $2000
 
     and #$3F
 PPU_write:
@@ -263,58 +253,6 @@ check_loop:
     cpy video_bufferptrW
     bne PPU_loop
     jmp end_updates
-
-update_line:
-    ; %00xxxxxx
-    ldx n0
-    stx $2000
-    jmp PPU_write
-
-update_palette_inline:
-    ; %00111111 ($3F)
-    ldx n0
-    stx $2000
-
-    sta $2006
-    lda PPU_buff, y
-    iny
-    cmp #$20
-    bcs PPU_write_next  ; Normal update
-    ; Update palette AND palette buffer
-    and #$1F
-    sta $2006
-    tax
-    iny
-    lda PPU_buff, y
-    bmi update_palette_inline_repeat
-    beq check_loop_iny
-    iny
-    sta n2
-@loop:
-    mov $2007, {PPU_buff, y}
-    sta palette, x
-    inx
-    iny
-    dec n2
-    bne @loop
-
-    jmp check_loop
-
-update_palette_inline_repeat:
-    iny
-    and #$7F
-    beq check_loop_iny
-    sta n2
-    lda PPU_buff, y
-    iny
-@loop:
-    sta $2007
-    sta palette, x
-    inx
-    dec n2
-    bne @loop
-
-    jmp check_loop
 
 update_extra:
     ; Normal palette update and extra (extension)

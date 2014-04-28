@@ -2,6 +2,8 @@
 ;-------------------------------------------------------------------------------
 .include "core.inc"
 ;-------------------------------------------------------------------------------
+.include "controller.inc" ; HACK
+;-------------------------------------------------------------------------------
 
     .constructor sound_ctor
 
@@ -11,6 +13,13 @@ dmcsilent:  .byte $55
     .zeropage
 time1:      .res 1
 soundptr:   .res 2
+env:        .res 1
+vol:        .res 1
+
+vol_init = 31
+env_rate = 15
+note_spc = 17
+
     .segment "PRGBK01"
 
 some_notes: .byte 0,  7, 10, 15, 10, 7, 0, 15
@@ -29,25 +38,77 @@ notes: .word 427, 403, 380, 359, 338, 319, 301, 284, 268, 253, 239, 225
     lda time1
     beq :+
     dec time1
-    rts
-:   lda #6
+    jmp do_vol
+:   lda #note_spc
     sta time1
+    mov env, #$FF
     ldy #0
     lda (soundptr), y
     asl
     tax
-    mov  $4000, #$81
     movw $4002, {notes, x}
     inc soundptr
     bne :+
     inc soundptr+1
 :   lda soundptr
     cmp #<(some_notes + some_notes_size)
-    bne exit
+    bne do_vol
     movw soundptr, #some_notes
+
+do_vol:
+    lda env
+    ldx vol
+    jsr APU_volume
+    ora #$B0
+    sta $4000
+    lda env
+    sec
+    sbc #env_rate
+    bcs :+
+    lda #0
+:   sta env
+
+    lda #$0C
+    and btn_press
+    cmp #$04
+    bcc exit
+    beq :++
+    lda vol
+    clc
+    adc #1
+    cmp #32
+    bcc :+
+    lda #31
+:   sta vol
+    rts
+:   dec vol
+    bpl exit
+    lda #0
+    sta vol
 
 exit:
     rts
+.endproc
+;-------------------------------------------------------------------------------
+; uint8_t APU_volume(uint8_t env, uint8_t vol) __nmi__
+;
+.proc APU_volume
+    lsr A
+    lsr A
+    lsr A
+    ora #$E0
+    sec
+    stx n0
+    adc n0 ; contains volume (5 lsb)
+    bcc :+
+    tax
+    lda APU_voltable, X
+    rts
+:   lda #0
+    rts
+APU_voltable:
+    .byte 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4
+    .byte 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15
 .endproc
 ;-------------------------------------------------------------------------------
     .segment "PRGBK00"
@@ -70,6 +131,7 @@ exit:
     ; (TODO)
     mov time1, #0
     movw soundptr, #some_notes
+    mov vol, #vol_init
 
     rts
 .endproc

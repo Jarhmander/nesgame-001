@@ -51,6 +51,7 @@ scroll_y:           .res 1
 ; | Change mirroring        | $C4|<mirrorbits>         <mirrorbits> mask: $03 |
 ; | Change CHR banks        | $C8|<sel>, <banknum>            <sel> mask: $07 |
 ; | Update palette group    | $D0|<sel>                       <sel> mask: $07 |
+; | Update attribute col    | $D8|<len>, <addr>, <data> [...] <sel> mask: $07 |
 ; +-------------------------+-------------------------------------------------+
 ;
 ; Detailed description
@@ -60,7 +61,7 @@ scroll_y:           .res 1
 ;  Data: $00 $00 $00
 ;  Mask: $3F $FF $FF
 ;
-;   Sets increment to 1 and sets PPU address to %00hhhhhhllllllll. Writes
+;   Sets increment to 1 and sets PPU address to %00hhhhhh:llllllll. Writes
 ;   sssssss bytes to $2007. If r is 0, the following sssssss bytes will be
 ;   copied (normal mode); otherwise, the next byte is copied sssssss times
 ;   (repeat mode).
@@ -70,7 +71,7 @@ scroll_y:           .res 1
 ;  Data: $40 $00 $00
 ;  Mask: $3F $FF $FF
 ;
-;   Set increment to 32 and sets PPU address to %00hhhhhhllllllll. Writes
+;   Set increment to 32 and sets PPU address to %00hhhhhh:llllllll. Writes
 ;   sssssss bytes to $2007 The meaning of r is the same as the previous command.
 ;
 ; _Write continue:_
@@ -140,12 +141,13 @@ scroll_y:           .res 1
 ;   The NES palette at $3F00 + ppp*4 is updated with palette[ppp*4]. It does
 ;   not affect the background color nor any of its mirrors.
 ;
-; _Unassigned $D8:_
-;  %11011xxx
-;  Data: $D8
-;  Mask: $07
+; _Write attribute table col:_
+;  %11011lll nnaaaaaa [data...]
+;  Data: $D8 $00
+;  Mask: $07 $FF
 ;
-;   3 bits of unassigned codes. Does not use; future expansion.
+;   Writes the following l+1 bytes at %10nn11:11aaaaaa in 8 bytes increments (So
+;   it updates a column in attribute area).
 ;
 ; _Unassigned $E0:_
 ;  %111xxxxx
@@ -263,10 +265,68 @@ update_extra:
     bcc extra_upd_C0
     cmp #$E0
     bcs extra_upd_E0
-    ; Update palette group
-    ; %1101-ppp
-    ; NOTE: change the code if %11011xxx is to be used; now it doesn't check
-    ; the - bit.
+    cmp #$D8
+    bcc upd_palette_group
+    ; attribute col update
+    and #$07
+    tax
+    inx
+    stx n2
+    lda PPU_buff, y
+    ; %nnaaaaaa => %10nn11:11aaaaaa
+    ; So, addresses will be $23C0 | ((v & 0xC0)<<4) | (v & 0x3F)
+    and #$C0
+    lsr A
+    lsr A
+    lsr A
+    lsr A
+    ora #$23
+    tax
+    lda PPU_buff, y
+    iny
+    and #$3F
+    ora #$C0
+    sta n3
+
+:   stx $2006       ;  4
+    sta $2006       ;  8
+    lda PPU_buff, y ; 12
+    iny             ; 14
+    sta $2007       ; 18
+    lda n3          ; 21
+    adc #8          ; 23
+    sta n3          ; 26
+    dec n2          ; 31
+    beq :-          ; 34
+
+    jmp check_loop
+
+update_cur_addr:
+    ; Write data without setting PPU address
+    ; pattern => %10xxxxxx
+    and #$3F
+    cmp #$20
+    bcs :+
+    jmp PPU_write_no_set_addr
+:   and #$1F
+    jmp PPU_repeat_write_no_set_addr
+
+extra_upd_C0:
+    ; Some actions. See C0_jumptable
+    ; %1100xxxx
+    and #$0F
+    tax
+    mov n2, {C0_jumptable_lo, x}
+    mov n3, {C0_jumptable_hi, x}
+    jmp (n2)
+
+extra_upd_E0:
+    ; Do nothing, yet.
+    ; pattern => %111xxxxx (5 coding bits free)
+    jmp check_loop
+
+upd_palette_group:
+    ; %11010xxx
     and #$07
     asl
     asl
@@ -280,30 +340,8 @@ update_extra:
     mov $2007, {palette+2, x}
 
     jmp check_loop
-extra_upd_C0:
-    ; Some actions. See C0_jumptable
-    ; %1100xxxx
-    and #$0F
-    tax
-    mov n2, {C0_jumptable_lo, x}
-    mov n3, {C0_jumptable_hi, x}
-    jmp (n2)
 
-update_cur_addr:
-    ; Write data without setting PPU address
-    ; pattern => %10xxxxxx
-    and #$3F
-    cmp #$20
-    bcs :+
-    jmp PPU_write_no_set_addr
-:   and #$1F
-    jmp PPU_repeat_write_no_set_addr
-
-extra_upd_E0:
-    ; Do nothing, yet.
-    ; pattern => %111xxxxx (5 coding bits free)
-    jmp check_loop
-
+; -- -- -- -- -- -- --
 end_updates:
     sty video_bufferptrR
 set_scroll:

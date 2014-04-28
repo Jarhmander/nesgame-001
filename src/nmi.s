@@ -4,6 +4,7 @@
 .include "mapper69.inc"
 .include "video.inc"
 .include "audio.inc"
+.include "controller.inc"
 ;-------------------------------------------------------------------------------
 
     .zeropage
@@ -26,6 +27,7 @@ frame_count:    .res 2
     inc frame_count+1
 :
     ; read controller
+    jsr update_controller
 
     ; sound engine
     swbankprg_nosave sound_engine

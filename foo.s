@@ -19,10 +19,37 @@ nessize 4, 1
 initppu:
     .byte $C3, $C1, $C6     ; rendering on, update palette, ScrnA mirroring.
     .byte $C8, 0, $C9, 1    ; Banking CHR
+
+initppu_size = * - initppu
+
+initppu2:
     .dbyt $2000 + 5 + (15 << 5)
     .byte 21, "THIS IS JARHMANDER!!!"
 
-initppu_size = * - initppu
+    .dbyt $2000 + 0 + (25 << 5)
+    .byte 12
+    .repeat 12,I
+    .byte 64+I
+    .endrepeat
+
+    .dbyt $2000 + 0 + (26 << 5)
+    .byte 32
+    .repeat 32,I
+    .byte 64+I
+    .endrepeat
+
+    .dbyt $2000 + 0 + (27 << 5)
+    .byte 32
+    .repeat 32,I
+    .byte 64+I
+    .endrepeat
+
+    .dbyt $2000 + 0 + (28 << 5)
+    .byte 32
+    .repeat 32,I
+    .byte 64+I
+    .endrepeat
+initppu2_size = * - initppu2
 
 ;-------------------------------------------------------------------------------
 .proc main
@@ -51,7 +78,14 @@ initppu_size = * - initppu
     mov palette+ 3, #$20
 
     sty video_bufferptrW
+    jsr wait_vblank
 
+    sty  r0
+    movw r1, #initppu2
+    mov  r3, #<initppu2_size
+    jsr memcpy_ppu
+    tay
+    sty video_bufferptrW
     ldx #60
     jsr wait_x_frames
 

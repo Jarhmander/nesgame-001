@@ -25,6 +25,8 @@ scroll_y:           .res 1
 
     .code
 
+crossover_write = 8
+
 ;-------------------------------------------------------------------------------
 .proc do_PPU_updates
 ; If OAM_ready is <> 0, sprite DMA will occur.
@@ -51,7 +53,8 @@ scroll_y:           .res 1
 ; | Change mirroring        | $C4|<mirrorbits>         <mirrorbits> mask: $03 |
 ; | Change CHR banks        | $C8|<sel>, <banknum>            <sel> mask: $07 |
 ; | Update palette group    | $D0|<sel>                       <sel> mask: $07 |
-; | Update attribute col    | $D8|<len>, <addr>, <data> [...] <sel> mask: $07 |
+; | Update attribute col    | $D8|<len>, <addr_hi>, <addr_lo>, <data> [...]   |
+; |                         |                                 <len> mask: $07 |
 ; +-------------------------+-------------------------------------------------+
 ;
 ; Detailed description
@@ -142,11 +145,11 @@ scroll_y:           .res 1
 ;   not affect the background color nor any of its mirrors.
 ;
 ; _Write attribute table col:_
-;  %11011lll nnaaaaaa [data...]
-;  Data: $D8 $00
-;  Mask: $07 $FF
+;  %11011lll 00hhhhhh llllllll [data...]
+;  Data: $D8 $00 $00
+;  Mask: $07 $FF $FF
 ;
-;   Writes the following l+1 bytes at %10nn11:11aaaaaa in 8 bytes increments (So
+;   Writes the following l+1 bytes at %hhhhhh:llllllll in 8 bytes increments (So
 ;   it updates a column in attribute area).
 ;
 ; _Unassigned $E0:_
@@ -156,6 +159,17 @@ scroll_y:           .res 1
 ;
 ;   5 bits of unassigned codes. Does not use; future expansion.
 ;
+.macro check_loop_short
+    cpy video_bufferptrW
+    bne PPU_loop
+    jmp end_updates
+.endmacro
+.macro check_loop
+    cpy video_bufferptrW
+    beq :+
+    jmp PPU_loop
+:   jmp end_updates
+.endmacro
 
     ; do_PPU_updates()
     ; - exit if not ready
@@ -206,62 +220,75 @@ PPU_write_next:
     iny
     lda PPU_buff, y
     bmi PPU_repeat_write
+    cmp #crossover_write
+    bcc PPU_write_small
+
+    and #$1F
+    tax
+    mov n2, {PPU_unr_write_lo, x}
+    mov n3, {PPU_unr_write_hi, x}
+    lda PPU_buff, y
     iny
-PPU_write_no_set_addr:
+    jmp (n2)
+
+PPU_repeat_write:
+    and #$7F
+    cmp #crossover_write
+    bcc PPU_repeat_write_small
+    and #$1F
+    tax
+    mov n2, {PPU_unr_repeat_write_lo, x}
+    mov n3, {PPU_unr_repeat_write_hi, x}
+    lda PPU_buff, y
+    iny
+    ldx PPU_buff, y
+    iny
+    jmp (n2)
+
+PPU_write_small:
+    iny
+PPU_write_small_no_iny:
     lsr A
-    beq PPU_write_1
     tax
     bcc @loop
-
-    mov $2007, {PPU_buff, y}
-    iny
+    inx
+    jmp @loop2
 @loop:
     mov $2007, {PPU_buff, y}
     iny
+@loop2:
     mov $2007, {PPU_buff, y}
     iny
     dex
     bne @loop
 
-    cpy video_bufferptrW
-    bne PPU_loop
-    jmp end_updates
-PPU_write_1:
-    mov $2007, {PPU_buff, y}
-check_loop_iny:
-    iny
-    cpy video_bufferptrW
-    bne PPU_loop
-    jmp end_updates
+    check_loop_short
 
-PPU_repeat_write:
+PPU_repeat_write_small:
     iny
-    and #$7F
-PPU_repeat_write_no_set_addr:
+PPU_repeat_write_small_no_iny:
     lsr A
-    beq PPU_write_1
     tax
     lda PPU_buff, y
     iny
     bcc @loop
-    sta $2007
+    inx
+    jmp @loop
 @loop:
     sta $2007
+@loop2:
     sta $2007
     dex
     bne @loop
-
-check_loop:
-    cpy video_bufferptrW
-    bne PPU_loop
-    jmp end_updates
+    check_loop
 
 update_extra:
     ; Normal palette update and extra (extension)
     iny
     cmp #$C0
-    bcc update_cur_addr
-    cmp #$D0
+    bcs :+
+    jmp update_cur_addr
+:   cmp #$D0
     bcc extra_upd_C0
     cmp #$E0
     bcs extra_upd_E0
@@ -270,46 +297,40 @@ update_extra:
     ; attribute col update
     and #$07
     tax
-    inx
-    stx n2
-    lda PPU_buff, y
-    ; %nnaaaaaa => %10nn11:11aaaaaa
-    ; So, addresses will be $23C0 | ((v & 0xC0)<<4) | (v & 0x3F)
-    and #$C0
-    lsr A
-    lsr A
-    lsr A
-    lsr A
-    ora #$23
-    tax
     lda PPU_buff, y
     iny
-    and #$3F
-    ora #$C0
-    sta n3
-
-:   stx $2006       ;  4
-    sta $2006       ;  8
-    lda PPU_buff, y ; 12
-    iny             ; 14
-    sta $2007       ; 18
-    lda n3          ; 21
-    adc #8          ; 23
-    sta n3          ; 26
-    dec n2          ; 31
-    beq :-          ; 34
-
-    jmp check_loop
-
-update_cur_addr:
-    ; Write data without setting PPU address
-    ; pattern => %10xxxxxx
-    and #$3F
-    cmp #$20
-    bcs :+
-    jmp PPU_write_no_set_addr
-:   and #$1F
-    jmp PPU_repeat_write_no_set_addr
+    sta n2
+    lda PPU_buff, y
+    iny
+    cpx #4
+    bcc @f0t4
+    cpx #6
+    bcc @f4t6
+    cpx #7
+    bcc @do6 ;33
+    clc
+    jmp @do7 ;37
+@f0t4:
+    cpx #2
+    bcc @f0t2
+    cpx #3
+    bcc @do2 ;34
+    clc
+    jmp @do3 ;38
+@f4t6:
+    cpx #5
+    bcc @do4 ;34
+    clc
+    jmp @do5 ;38
+@f0t2:
+    cpx #1
+    bcc @do0 ;35
+    clc
+    jmp @do1 ;39
+    .repeat 8,I
+.ident(.sprintf("@do%d",I)):
+    jmp .ident(.sprintf("attribute_col_unr_%d",I))
+    .endrepeat
 
 extra_upd_C0:
     ; Some actions. See C0_jumptable
@@ -323,7 +344,7 @@ extra_upd_C0:
 extra_upd_E0:
     ; Do nothing, yet.
     ; pattern => %111xxxxx (5 coding bits free)
-    jmp check_loop
+    check_loop
 
 upd_palette_group:
     ; %11010xxx
@@ -339,9 +360,162 @@ upd_palette_group:
     mov $2007, {palette+1, x}
     mov $2007, {palette+2, x}
 
-    jmp check_loop
+    check_loop
 
-; -- -- -- -- -- -- --
+update_cur_addr:
+    ; Write data without setting PPU address
+    ; pattern => %10xxxxxx
+    and #$3F
+    cmp #$20
+    bcs @repeat
+    cmp #crossover_write
+    bcc :+
+    tax
+    mov n2, {PPU_unr_write_lo, x}
+    mov n3, {PPU_unr_write_hi, x}
+    lda #0
+    jmp (n2)
+:   jmp PPU_write_small_no_iny
+@repeat:
+    and #$1F
+    cmp #crossover_write
+    bcc :+
+    tax
+    mov n2, {PPU_unr_repeat_write_lo, x}
+    mov n3, {PPU_unr_repeat_write_hi, x}
+    lda #0
+    jmp (n2)
+:   jmp PPU_repeat_write_small_no_iny
+
+; - - - - - - - - - - - - - - -
+; $C0
+upd_background:
+    mov $2006, #$3F
+    mov $2006, #0
+    mov $2007, palette+0
+
+    check_loop
+
+; - - - - - - - - - - - - - - -
+; $C1
+upd_all_palette:
+    mov $2000, n0
+    mov $2006, #$3F
+    mov $2006, #0
+    mov $2007, palette+0
+    mov $2007, palette+1
+    mov $2007, palette+2
+    mov $2007, palette+3
+    .repeat 7, I
+    bit $2007
+    mov $2007, palette+5+I*4
+    mov $2007, palette+6+I*4
+    mov $2007, palette+7+I*4
+    .endrepeat
+    check_loop
+
+; - - - - - - - - - - - - - - -
+; $C2
+upd_set_scroll:
+    mov video_ppuctrl, {PPU_buff, y}
+    iny
+    mov scroll_x,      {PPU_buff, y}
+    iny
+    mov scroll_y,      {PPU_buff, y}
+    iny
+    check_loop
+; - - - - - - - - - - - - - - -
+; $C3
+upd_set_rendering:
+    lda video_ppumask
+    sta $2001
+    check_loop
+; - - - - - - - - - - - - - - -
+; $C4-$C7
+upd_set_mirroring:
+    mov $8000, #$C
+    txa
+    and #$3
+    sta $A000
+    check_loop
+; - - - - - - - - - - - - - - -
+; $C8-$CF
+upd_set_chrbank:
+    txa
+    and #$7
+    sta $8000
+    lda PPU_buff, y
+    iny
+    sta $A000
+    check_loop
+; - - - - - - - - - - - - - - -
+C0_jumptable_lo:
+    .lobytes upd_background, upd_all_palette, upd_set_scroll, upd_set_rendering
+    .lobytes upd_set_mirroring, upd_set_mirroring, upd_set_mirroring, upd_set_mirroring
+    .lobytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
+    .lobytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
+C0_jumptable_hi:
+    .hibytes upd_background, upd_all_palette, upd_set_scroll, upd_set_rendering
+    .hibytes upd_set_mirroring, upd_set_mirroring, upd_set_mirroring, upd_set_mirroring
+    .hibytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
+    .hibytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
+
+;-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+PPU_unr_write:
+    .repeat 32,I
+    ldx PPU_buff, y
+    stx $2007
+    iny
+.ident(.sprintf("PPU_unr_write_%d",I)):
+    .endrepeat
+    sbc #32
+    bcc :+
+    jmp PPU_unr_write
+:
+    check_loop
+
+PPU_unr_write_lo:
+.repeat 32,I
+    .lobytes .ident(.sprintf("PPU_unr_write_%d",31-I))
+.endrepeat
+PPU_unr_write_hi:
+.repeat 32,I
+    .hibytes .ident(.sprintf("PPU_unr_write_%d",31-I))
+.endrepeat
+;-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+PPU_unr_repeat_write:
+    .repeat 32,I
+    stx $2007
+.ident(.sprintf("PPU_unr_repeat_write_%d",I)):
+    .endrepeat
+    sbc #32
+    bcc :+
+    jmp PPU_unr_repeat_write
+:
+    check_loop
+
+PPU_unr_repeat_write_lo:
+.repeat 32,I
+    .lobytes .ident(.sprintf("PPU_unr_repeat_write_%d",31-I))
+.endrepeat
+PPU_unr_repeat_write_hi:
+.repeat 32,I
+    .hibytes .ident(.sprintf("PPU_unr_repeat_write_%d",31-I))
+.endrepeat
+;-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+.repeat 8,I
+.ident(.sprintf("attribute_col_unr_%d",7-I)):
+    ldx n2          ;  3
+    stx $2006       ;  7
+    sta $2006       ; 11
+    ldx PPU_buff, y ; 15
+    iny             ; 17
+    stx $2007       ; 21
+    adc #8          ; 23
+.endrepeat
+    check_loop
+
+;==============================
 end_updates:
     sty video_bufferptrR
 set_scroll:
@@ -356,89 +530,6 @@ set_scroll:
 
 exit:
     rts
-
-; - - - - - - - - - - - - - - -
-; $C0
-upd_background:
-    mov $2006, #$3F
-    mov $2006, #0
-    mov $2007, palette+0
-
-    jmp check_loop
-
-; - - - - - - - - - - - - - - -
-; $C1
-upd_all_palette:
-    mov $2000, n0
-    mov $2006, #$3F
-    mov $2006, #0
-    mov $2007, palette+0
-    mov $2007, palette+1
-    mov $2007, palette+2
-    mov $2007, palette+3
-    ldx #7
-    sty n2
-    ldy #4
-    ; clc implied by bcc that branched here
-@loop:
-    bit $2007
-    mov $2007, {palette+1,y}
-    mov $2007, {palette+2,y}
-    mov $2007, {palette+3,y}
-    tya
-    adc #4
-    tay
-    dex
-    bne @loop
-
-    ldy n2
-    jmp check_loop
-
-; - - - - - - - - - - - - - - -
-; $C2
-upd_set_scroll:
-    mov video_ppuctrl, {PPU_buff, y}
-    iny
-    mov scroll_x,      {PPU_buff, y}
-    iny
-    mov scroll_y,      {PPU_buff, y}
-    iny
-    jmp check_loop
-; - - - - - - - - - - - - - - -
-; $C3
-upd_set_rendering:
-    lda video_ppumask
-    sta $2001
-    jmp check_loop
-; - - - - - - - - - - - - - - -
-; $C4-$C7
-upd_set_mirroring:
-    mov $8000, #$C
-    txa
-    and #$3
-    sta $A000
-    jmp check_loop
-; - - - - - - - - - - - - - - -
-; $C8-$CF
-upd_set_chrbank:
-    txa
-    and #$7
-    sta $8000
-    lda PPU_buff, y
-    iny
-    sta $A000
-    jmp check_loop
-; - - - - - - - - - - - - - - -
-C0_jumptable_lo:
-    .lobytes upd_background, upd_all_palette, upd_set_scroll, upd_set_rendering
-    .lobytes upd_set_mirroring, upd_set_mirroring, upd_set_mirroring, upd_set_mirroring
-    .lobytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
-    .lobytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
-C0_jumptable_hi:
-    .hibytes upd_background, upd_all_palette, upd_set_scroll, upd_set_rendering
-    .hibytes upd_set_mirroring, upd_set_mirroring, upd_set_mirroring, upd_set_mirroring
-    .hibytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
-    .hibytes upd_set_chrbank, upd_set_chrbank, upd_set_chrbank, upd_set_chrbank
 .endproc
 ;-------------------------------------------------------------------------------
 .proc video_ctor

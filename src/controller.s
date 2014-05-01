@@ -48,14 +48,14 @@ exit:
     lda #0
     jsr read_controller
     ; A, B, Select, Start, Up, Down, Left, Right.
-    tax
+    sta n0
     eor btn_down
     sta btn_toggle
-    and btn_down
+    and n0
     sta btn_press
     eor btn_toggle
     sta btn_release
-    txa
+    lda n0
     sta btn_down
     rts
 .endproc

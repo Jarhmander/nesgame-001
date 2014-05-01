@@ -13,12 +13,30 @@ dmcsilent:  .byte $55
     .zeropage
 time1:      .res 1
 soundptr:   .res 2
+
+; ADSR:
 env:        .res 1
+flags:      .res 1
+attack:     .res 1
+decay:      .res 1
+sustain:    .res 1
+release:    .res 1
+
 vol:        .res 1
 
-vol_init = 31
-env_rate = 15
-note_spc = 17
+mode:       .res 1
+
+vol_init = 63
+
+att_init = 46
+dec_init = 100
+sus_init = 11
+rel_init = 10
+
+note_spc = 7
+noff_spc = 4
+; noff < note
+
 
     .segment "PRGBK01"
 
@@ -33,16 +51,24 @@ notes: .word 427, 403, 380, 359, 338, 319, 301, 284, 268, 253, 239, 225
 
 ;-------------------------------------------------------------------------------
 ; void sound_engine(void) __nmi__
+;
 .proc sound_engine
     ;
+    lda mode
+    beq play_mode
+    jmp button_mode
+play_mode:
     lda time1
-    beq :+
+    beq :++
     dec time1
-    jmp do_vol
+    cmp #note_spc-noff_spc+1
+    bcs :+
+    mov flags, #2
+:   jmp do_vol
 :   lda #note_spc
     sta time1
-    mov env, #$FF
     ldy #0
+    sty flags
     lda (soundptr), y
     asl
     tax
@@ -56,37 +82,94 @@ notes: .word 427, 403, 380, 359, 338, 319, 301, 284, 268, 253, 239, 225
     movw soundptr, #some_notes
 
 do_vol:
-    lda env
+    mov n0, env
+    mov n1, flags
+    mov n2, attack
+    mov n3, decay
+    mov n4, sustain
+    mov n5, release
+    jsr ADSR
+    sta env
+    ldx n1
+    stx flags
     ldx vol
     jsr APU_volume
     ora #$B0
     sta $4000
-    lda env
-    sec
-    sbc #env_rate
-    bcs :+
-    lda #0
-:   sta env
 
     lda #$0C
     and btn_press
     cmp #$04
-    bcc exit
+    bcc @next
     beq :++
     lda vol
     clc
     adc #1
-    cmp #32
+    cmp #64
     bcc :+
-    lda #31
+    lda #63
 :   sta vol
     rts
 :   dec vol
     bpl exit
     lda #0
     sta vol
-
+    rts
+@next:
+    lda #$10
+    bit btn_press
+    beq exit
+    inc mode
 exit:
+    rts
+button_mode:
+    lda #$C0
+    bit btn_press
+    beq :+
+    lda #0
+    sta flags
+    jmp @nextb
+:   bit btn_down
+    bne @nextb
+    lda #2
+    sta flags
+@nextb:
+    lda #$10
+    bit btn_press
+    beq :+
+    dec mode
+:   lda #$0C
+    and btn_press
+    cmp #$4
+    bcc @next
+    beq :+
+    inc vol
+    lda vol
+    cmp #64
+    bcc @next
+    lda #63
+    sta vol
+    jmp @next
+:   dec vol
+    bpl @next
+    lda #0
+    sta vol
+@next:
+    mov n0, env
+    mov n1, flags
+    mov n2, attack
+    mov n3, decay
+    mov n4, sustain
+    mov n5, release
+    jsr ADSR
+    sta env
+    ldx n1
+    stx flags
+    ldx vol
+    jsr APU_volume
+    ora #$B0
+    sta $4000
+
     rts
 .endproc
 ;-------------------------------------------------------------------------------
@@ -95,8 +178,7 @@ exit:
 .proc APU_volume
     lsr A
     lsr A
-    lsr A
-    ora #$E0
+    ora #$C0
     sec
     stx n0
     adc n0 ; contains volume (5 lsb)
@@ -107,8 +189,58 @@ exit:
 :   lda #0
     rts
 APU_voltable:
-    .byte 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4
-    .byte 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15
+; floor(logspace(log10(.99),log10(15.99),64))
+; each step is ~.38356dB
+    .byte  0,  1,  1,  1,  1,  1,  1,  1
+    .byte  1,  1,  1,  1,  1,  1,  1,  1
+    .byte  2,  2,  2,  2,  2,  2,  2,  2
+    .byte  2,  2,  3,  3,  3,  3,  3,  3
+    .byte  4,  4,  4,  4,  4,  5,  5,  5
+    .byte  5,  6,  6,  6,  6,  7,  7,  7
+    .byte  8,  8,  9,  9,  9, 10, 10, 11
+    .byte 11, 12, 12, 13, 14, 14, 15, 15
+.endproc
+;-------------------------------------------------------------------------------
+; ADSR(uint8_t cur_env, flags, a, d, s, r) __nmi__
+;                                                 -> uint8_t env, cur_env, flags
+;
+.proc ADSR
+    lda n1  ; flags (relocate)
+    and #3
+    cmp #1
+    beq decay
+    bcs release
+attack:
+    lda n0  ; current envelope (relocate)
+    clc
+    adc n2  ; Attack rate (relocate)
+    bcs :+
+    rts     ; A = env
+:   inc n1  ; flags (relocate)
+
+    lda #$FF
+    jmp nofixenv
+;   sbc n3  ; decay rate (relocate)
+;   jmp sustain_chk
+decay:
+    lda n0  ; current envelope (relocate)
+    sec
+    sbc n3  ; decay rate (relocate)
+    bcc fixenv
+sustain_chk:
+    cmp n4  ; sustain level (relocate)
+    bcs nofixenv
+fixenv:
+    lda n4  ; sustain level (relocate)
+nofixenv:
+    rts     ; A = env
+release:
+    lda n0  ; current envelope (relocate)
+    sec
+    sbc n5  ; release rate (relocate)
+    bcs :+
+    lda #0
+:   rts
 .endproc
 ;-------------------------------------------------------------------------------
     .segment "PRGBK00"
@@ -133,6 +265,13 @@ APU_voltable:
     movw soundptr, #some_notes
     mov vol, #vol_init
 
+    mov attack,     #att_init
+    mov decay,      #dec_init
+    mov sustain,    #sus_init
+    mov release,    #rel_init
+    mov flags,      #0
+    mov env,        #0
+    mov mode,       #0
     rts
 .endproc
 ;-------------------------------------------------------------------------------

@@ -215,7 +215,6 @@ PPU_loop:
 PPU_write:
     sta $2006
     lda PPU_buff, y
-PPU_write_next:
     sta $2006
     iny
     lda PPU_buff, y

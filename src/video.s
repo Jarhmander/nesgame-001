@@ -235,11 +235,12 @@ PPU_repeat_write:
     and #$7F
     cmp #crossover_write
     bcc PPU_repeat_write_small
+    sta n4
     and #$1F
     tax
     mov n2, {PPU_unr_repeat_write_lo, x}
     mov n3, {PPU_unr_repeat_write_hi, x}
-    lda PPU_buff, y
+    lda n4
     iny
     ldx PPU_buff, y
     iny

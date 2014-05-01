@@ -26,29 +26,21 @@ initppu2:
     .dbyt $2000 + 5 + (15 << 5)
     .byte 21, "THIS IS JARHMANDER!!!"
 
-    .dbyt $2000 + 0 + (25 << 5)
-    .byte 12
-    .repeat 12,I
-    .byte 64+I
-    .endrepeat
-
-    .dbyt $2000 + 0 + (26 << 5)
-    .byte 32
-    .repeat 32,I
-    .byte 64+I
-    .endrepeat
-
-    .dbyt $2000 + 0 + (27 << 5)
-    .byte 32
-    .repeat 32,I
-    .byte 64+I
-    .endrepeat
-
+    .dbyt $2000 + $3C0 + (5>>2) + ((15&$1C)<<1)
+    .byte $87, $40
+    .if 0
     .dbyt $2000 + 0 + (28 << 5)
     .byte 32
     .repeat 32,I
     .byte 64+I
     .endrepeat
+    .else
+    .dbyt $4000|$2000 + 30 + (4<<5)
+    .byte $88, "#"
+    .byte $D8|3
+    .dbyt $2000 + $3C0 + (30>>2) + ((4&$1C)<<1)
+    .byte $88, $88, $88, $88
+    .endif
 initppu2_size = * - initppu2
 
 ;-------------------------------------------------------------------------------
@@ -76,6 +68,9 @@ initppu2_size = * - initppu2
     jsr memcpy_ppu
     tay
     mov palette+ 3, #$20
+
+    mov palette+ 7, #$16
+    mov palette+11, #$28
 
     sty video_bufferptrW
     jsr wait_vblank

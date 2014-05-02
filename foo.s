@@ -23,24 +23,18 @@ initppu:
 initppu_size = * - initppu
 
 initppu2:
-    .dbyt $2000 + 5 + (15 << 5)
-    .byte 21, "THIS IS JARHMANDER!!!"
+    .dbyt $2000 + 4 + (15 << 5)
+    .byte 23, 4, "THIS IS JARHMANDER!!!", 4
+    .dbyt $2000 + 4 + (14 << 5)
+    .byte 1, 6
+    .byte $80|$20|21,5
+    .byte $81, 7
+    .dbyt $2000 + 4 + (16 << 5)
+    .byte 1, 8
+    .byte $80|$20|21,5
+    .byte $81, 9
 
-    .dbyt $2000 + $3C0 + (5>>2) + ((15&$1C)<<1)
-    .byte $87, $40
-    .if 0
-    .dbyt $2000 + 0 + (28 << 5)
-    .byte 32
-    .repeat 32,I
-    .byte 64+I
-    .endrepeat
-    .else
-    .dbyt $4000|$2000 + 30 + (4<<5)
-    .byte $88, "#"
-    .byte $D8|3
-    .dbyt $2000 + $3C0 + (30>>2) + ((4&$1C)<<1)
-    .byte $88, $88, $88, $88
-    .endif
+
 initppu2_size = * - initppu2
 
 ;-------------------------------------------------------------------------------
@@ -67,10 +61,10 @@ initppu2_size = * - initppu2
     mov  r3, #<initppu_size
     jsr memcpy_ppu
     tay
+    mov palette+ 1, #$2D
+    mov palette+ 2, #$3D
     mov palette+ 3, #$20
 
-    mov palette+ 7, #$16
-    mov palette+11, #$28
 
     sty video_bufferptrW
     jsr wait_vblank
@@ -149,24 +143,6 @@ initppu2_size = * - initppu2
     push_PPU y+, #$C0
     sty video_bufferptrW
     ldx #60
-    jsr wait_x_frames
-
-    mov palette+3, #$10
-    push_PPU y+, #$D0
-    sty video_bufferptrW
-    ldx #6
-    jsr wait_x_frames
-
-    mov palette+3, #$0
-    push_PPU y+, #$D0
-    sty video_bufferptrW
-    ldx #6
-    jsr wait_x_frames
-
-    mov palette+3, #$2D
-    push_PPU y+, #$D0
-    sty video_bufferptrW
-    ldx #6
     jsr wait_x_frames
 
     ; Quit and stall!

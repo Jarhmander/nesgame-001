@@ -384,6 +384,8 @@ update_cur_addr:
     mov n2, {PPU_unr_repeat_write_lo, x}
     mov n3, {PPU_unr_repeat_write_hi, x}
     lda #0
+    ldx PPU_buff, y
+    iny
     jmp (n2)
 :   jmp PPU_repeat_write_small_no_iny
 

@@ -94,8 +94,8 @@ exit:
     ldy r2
     mov r2, #0
     bit $2002
-    mov $2006, r0
     mov $2006, r1
+    mov $2006, r0
 @loop:
     mov $2007, {(r2), y}
     iny
@@ -122,8 +122,8 @@ exit:
 :   tay
 
     bit $2002
-    mov $2006, r0
     mov $2006, r1
+    mov $2006, r0
 @loop:
     mov $2007, r2
     dex

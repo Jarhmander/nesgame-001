@@ -22,6 +22,12 @@ mapper_prgbanks_size = 4
 ; void mapper_write(uint8_t value, uint8_t mapper_reg) __noclobber__
 .global mapper_write
 
+; void set_next_irq(uint8_t lo, uint8_t hi) __noclobber__
+; NOTE: IRQ- or NMI-context code can call this routine. However, it is unsafe to
+; call it from reset-context code. Care should be taken so NMI never interrupts
+; IRQ code.
+.global set_next_irq
+
 ; Macros
 
 ; Makes addr visible by the NES runtime address space by switching the bank

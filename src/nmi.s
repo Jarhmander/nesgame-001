@@ -9,13 +9,17 @@
 
     .zeropage
 frame_count:    .res 2
+nmi2irq_time:   .res 2
 
     .code
 
 ;-------------------------------------------------------------------------------
 .proc nmi
     push A, X, Y
-    ; setup next IRQ (TODO)
+    ; setup next IRQ
+    lda nmi2irq_time+0
+    ldx nmi2irq_time+1
+    jsr set_next_irq
 
     ; check if NMI reentered? ...
     ; ...

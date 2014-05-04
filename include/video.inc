@@ -18,6 +18,7 @@ PPU_buff_size = 256
 .globalzp video_ppumask
 .globalzp scroll_x, scroll_y
 
+.globalzp video_callback    ; 3 bytes
 ; Routines:
 ; void do_PPU_updates() __nmi__
 .global do_PPU_updates

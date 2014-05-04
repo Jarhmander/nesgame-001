@@ -22,7 +22,7 @@ video_ppuctrl:      .res 1
 video_ppumask:      .res 1
 scroll_x:           .res 1
 scroll_y:           .res 1
-
+video_callback:     .res 3
     .code
 
 crossover_write = 8
@@ -531,7 +531,9 @@ set_scroll:
     mov $2005, scroll_y
 
 exit:
-    rts
+    ; Before exit, call callback.
+    ; tail call
+    jmp video_callback
 .endproc
 ;-------------------------------------------------------------------------------
 .proc video_ctor
@@ -544,6 +546,8 @@ exit:
     movw r2, #$0F               ; memset(palette, 0x0F, sizeof(palette))
     movw r4, #palette_size
     jsr memset
+
+    mov video_callback, #$60    ; rts in callback
 
     mov  OAM_ready, #0          ; Init some vars
     mov  video_bufferptrR, #0

@@ -28,26 +28,32 @@ mode:       .res 1
 
 vol_init = 63
 
-att_init = 46
-dec_init = 100
-sus_init = 11
+att_init = 255
+dec_init = 19
+sus_init = 50
 rel_init = 10
 
-note_spc = 7
-noff_spc = 4
+note_spc = 9
+noff_spc = 6
 ; noff < note
 
 
     .segment "PRGBK01"
 
-some_notes: .byte 0,  7, 10, 15, 10, 7, 0, 15
-            .byte 0,  7, 10, 14, 10, 7, 0, 14
-            .byte 0,  7, 10, 12, 10, 7, 0, 12
-            .byte 0,  7, 10, 19, 10, 7, 0, 19
+some_notes: .byte 12+0,  12+7, 12+10, 12+15, 12+10, 12+7, 12+0, 12+15
+            .byte 12+0,  12+7, 12+10, 12+14, 12+10, 12+7, 12+0, 12+14
+            .byte 12+0,  12+7, 12+10, 12+12, 12+10, 12+7, 12+0, 12+12
+            .byte 12+0,  12+7, 12+10, 12+19, 12+10, 12+7, 12+0, 12+19
+            .byte    8,  12+0, 12+7,  12+15, 12+7,  12+0,    8, 12+15
+            .byte    8,  12+0, 12+7,  12+14, 12+7,  12+0,    8, 12+14
+            .byte    8,  12+0, 12+7,  12+12, 12+7,  12+0,    8, 12+12
+            .byte   10,  12+2, 12+7,  12+19, 12+7,  12+2,   10, 12+19
 some_notes_size = * - some_notes
 
-notes: .word 427, 403, 380, 359, 338, 319, 301, 284, 268, 253, 239, 225
+notes: .word 854, 806, 760, 718, 676, 638, 602, 568, 536, 506, 478, 450
+       .word 427, 403, 380, 359, 338, 319, 301, 284, 268, 253, 239, 225
        .word 213, 201, 189, 179, 169, 159, 150, 142, 134, 126, 119, 112
+       .word 106, 100, 94,  89,  84,  79,  75,  71,  67,  63,  59,  56
 
 ;-------------------------------------------------------------------------------
 ; void sound_engine(void) __nmi__
@@ -73,6 +79,17 @@ play_mode:
     asl
     tax
     movw $4002, {notes, x}
+    movw $4006, {notes, x}
+    lda notes, x
+    sta $4002
+    clc
+    adc #1
+    sta $4006
+    lda notes+1, x
+    sta $4003
+    adc #0
+    sta $4007
+
     inc soundptr
     bne :+
     inc soundptr+1
@@ -96,6 +113,7 @@ do_vol:
     jsr APU_volume
     ora #$B0
     sta $4000
+    sta $4004
 
     lda #$0C
     and btn_press
@@ -169,6 +187,7 @@ button_mode:
     jsr APU_volume
     ora #$B0
     sta $4000
+    sta $4004
 
     rts
 .endproc

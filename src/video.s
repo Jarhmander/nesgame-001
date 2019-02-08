@@ -297,39 +297,22 @@ update_extra:
     ; attribute col update
     and #$07
     tax
+    mov n3, {attribute_col_unr_lo, x}
+    mov n4, {attribute_col_unr_hi, x}
     lda PPU_buff, y
     iny
     sta n2
     lda PPU_buff, y
     iny
-    cpx #4
-    bcc @f0t4
-    cpx #6
-    bcc @f4t6
-    cpx #7
-    bcc @do6 ;33
-    clc
-    jmp @do7 ;37
-@f0t4:
-    cpx #2
-    bcc @f0t2
-    cpx #3
-    bcc @do2 ;34
-    clc
-    jmp @do3 ;38
-@f4t6:
-    cpx #5
-    bcc @do4 ;34
-    clc
-    jmp @do5 ;38
-@f0t2:
-    cpx #1
-    bcc @do0 ;35
-    clc
-    jmp @do1 ;39
+    jmp (n3)
+
+attribute_col_unr_lo:
     .repeat 8,I
-.ident(.sprintf("@do%d",I)):
-    jmp .ident(.sprintf("attribute_col_unr_%d",I))
+    .lobytes .ident(.sprintf("attribute_col_unr_%d",I))
+    .endrepeat
+attribute_col_unr_hi:
+    .repeat 8,I
+    .hibytes .ident(.sprintf("attribute_col_unr_%d",I))
     .endrepeat
 
 extra_upd_C0:
@@ -344,7 +327,10 @@ extra_upd_C0:
 extra_upd_E0:
     ; Do nothing, yet.
     ; pattern => %111xxxxx (5 coding bits free)
-    check_loop
+
+    ; %11111111
+    iny
+    jmp end_updates
 
 upd_palette_group:
     ; %11010xxx

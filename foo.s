@@ -230,13 +230,35 @@ status_bar_info_size = * - status_bar_info
 
     movw r8,  #0
     mov  r10, #0
+    sta  r11
+    sta  r12
+    sta  r13
+    sta  r14
+    movw r11, #1
 @endloop:
     jsr wait_vblank
-    lda #3
+
+    inc r13
+    bne @end_tweaks
+
+    asl r11
+    rol r12
+
+    sec
+    lda #$FE
+    sbc r11
+    sta r11
+    lda #$FF
+    sbc r12
+    sta r12
+
+@end_tweaks:
+
+    lda r11
     clc
     adc r8
     sta r8
-    lda #0
+    lda r12
     adc r9
     sta r9
     clc
